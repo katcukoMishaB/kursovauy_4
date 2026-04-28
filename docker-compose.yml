@@ -1,0 +1,130 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: crowdsourcing
+      POSTGRES_PASSWORD: crowdsourcing_pass
+      POSTGRES_DB: crowdsourcing_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crowdsourcing"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  user-service:
+    build:
+      context: .
+      dockerfile: services/user-service/Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: crowdsourcing
+      DB_PASSWORD: crowdsourcing_pass
+      DB_NAME: crowdsourcing_db
+      JWT_SECRET: your-secret-key-change-in-production
+      PORT: 8001
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  project-service:
+    build:
+      context: .
+      dockerfile: services/project-service/Dockerfile
+    ports:
+      - "8002:8002"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: crowdsourcing
+      DB_PASSWORD: crowdsourcing_pass
+      DB_NAME: crowdsourcing_db
+      PORT: 8002
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  task-service:
+    build:
+      context: .
+      dockerfile: services/task-service/Dockerfile
+    ports:
+      - "8003:8003"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: crowdsourcing
+      DB_PASSWORD: crowdsourcing_pass
+      DB_NAME: crowdsourcing_db
+      PORT: 8003
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  chat-service:
+    build:
+      context: .
+      dockerfile: services/chat-service/Dockerfile
+    ports:
+      - "8004:8004"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: crowdsourcing
+      DB_PASSWORD: crowdsourcing_pass
+      DB_NAME: crowdsourcing_db
+      PORT: 8004
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  report-service:
+    build:
+      context: .
+      dockerfile: services/report-service/Dockerfile
+    ports:
+      - "8005:8005"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: crowdsourcing
+      DB_PASSWORD: crowdsourcing_pass
+      DB_NAME: crowdsourcing_db
+      PORT: 8005
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      USER_SERVICE_URL: http://user-service:8001
+      PROJECT_SERVICE_URL: http://project-service:8002
+      TASK_SERVICE_URL: http://task-service:8003
+      CHAT_SERVICE_URL: http://chat-service:8004
+      REPORT_SERVICE_URL: http://report-service:8005
+      JWT_SECRET: your-secret-key-change-in-production
+      PORT: 8080
+    depends_on:
+      - user-service
+      - project-service
+      - task-service
+      - chat-service
+      - report-service
+
+volumes:
+  postgres_data:
+
