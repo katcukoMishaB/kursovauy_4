@@ -1,293 +1,132 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Система краудсорсинговых проектов</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <link rel="stylesheet" href="styles.css">
-    <script src="js/config.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/accessibility.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/projects.js"></script>
-    <script src="js/tasks.js"></script>
-    <script src="js/chat.js"></script>
-    <script src="js/admin.js"></script>
-    <script src="js/alpine-shell.js"></script>
+  <meta charset="UTF-8">
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Краудсорсинговые проекты — университетская платформа</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter','system-ui','sans-serif'] },
+          colors: {
+            ink: { 50:'#f8fafc',100:'#f1f5f9',200:'#e2e8f0',300:'#cbd5e1',400:'#94a3b8',500:'#64748b',600:'#475569',700:'#334155',800:'#1e293b',900:'#0f172a' },
+            brand: { 50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81' }
+          },
+          boxShadow: {
+            soft: '0 1px 2px rgba(15,23,42,0.04), 0 1px 1px rgba(15,23,42,0.03)',
+            card: '0 4px 14px rgba(15,23,42,0.06), 0 2px 4px rgba(15,23,42,0.04)',
+            pop:  '0 24px 48px -12px rgba(15,23,42,0.18), 0 8px 16px -8px rgba(15,23,42,0.10)'
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/projects.js"></script>
+  <script src="js/tasks.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/profile.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/invitations.js"></script>
+  <script src="js/router.js"></script>
+  <script src="js/app.js"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+    .kanban-col { min-height: 60vh; }
+    .boot-loader { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #f8fafc; color: #475569; font-size: 14px; }
+  </style>
 </head>
-<body class="bg-slate-100 text-slate-900">
-    <div id="app" x-data="appShell()" x-init="init()" class="min-h-screen">
-        <header id="main-header" style="display:none;">
-            <nav>
-                <div class="nav-container">
-                    <h1>Краудсорсинг Проекты</h1>
-                    <div class="nav-links">
-                        <a href="#" @click.prevent="go('projects')">Проекты</a>
-                        <a href="#" id="my-projects-link" @click.prevent="go('my-projects')" style="display:none;">Мои проекты</a>
-                        <a href="#" id="chats-link" @click.prevent="go('chats')" style="display:none;">Чаты</a>
-                        <a href="#" id="profile-link" @click.prevent="go('profile')" style="display:none;">Профиль</a>
-                        <a href="#" id="admin-link" @click.prevent="go('admin')" style="display:none;">Админ-панель</a>
-                        <button id="accessibility-btn" onclick="window.Accessibility.toggleAccessibility()" title="Настройки доступности">♿</button>
-                        <button id="logout-btn" @click="logout()" style="display:none;">Выход</button>
-                    </div>
-                </div>
-            </nav>
-        </header>
+<body class="bg-ink-50 text-ink-800 antialiased">
 
-        <div id="accessibility-panel" class="accessibility-panel" style="display:none;">
-            <h3>Настройки доступности</h3>
-            <div class="accessibility-control">
-                <label>Размер шрифта:</label>
-                <select id="font-size-select" onchange="window.Accessibility.changeFontSize(this.value)" class="accessibility-select">
-                    <option value="default">Обычный</option>
-                    <option value="large">Большой</option>
-                    <option value="xlarge">Очень большой</option>
-                </select>
-            </div>
-            <div class="accessibility-control">
-                <label>Цветовая схема:</label>
-                <select id="color-scheme-select" onchange="window.Accessibility.changeColorScheme(this.value)" class="accessibility-select">
-                    <option value="default">Обычная</option>
-                    <option value="protanopia">Протанопия (красно-зеленая)</option>
-                    <option value="deuteranopia">Дейтеранопия (зелено-красная)</option>
-                    <option value="tritanopia">Тританопия (сине-желтая)</option>
-                    <option value="grayscale">Черно-белая</option>
-                </select>
-            </div>
-            <div class="accessibility-control">
-                <label>
-                    <input type="checkbox" id="high-contrast" onchange="window.Accessibility.toggleHighContrast(this.checked)">
-                    Высокий контраст
-                </label>
-            </div>
-            <div class="accessibility-control">
-                <label>
-                    <input type="checkbox" id="images-enabled" onchange="window.Accessibility.toggleImages(this.checked)">
-                    Показывать изображения
-                </label>
-            </div>
-            <div class="accessibility-control">
-                <label>
-                    <input type="checkbox" id="images-grayscale" onchange="window.Accessibility.toggleImagesGrayscale(this.checked)">
-                    Черно-белые изображения
-                </label>
-            </div>
-            <button onclick="window.Accessibility.resetAccessibility()" class="btn btn-secondary">Сбросить настройки</button>
-        </div>
+  <div id="boot-loader" class="boot-loader">Загрузка интерфейса…</div>
 
-        <main>
-            <div id="home-page" class="page">
-                <div class="welcome-container">
-                    <h2 class="welcome-title">Добро пожаловать в систему краудсорсинговых проектов</h2>
-                    <div id="login-form" class="form-container">
-                        <h3>Вход</h3>
-                        <form @submit.prevent="login($event)">
-                            <input type="email" id="login-email" placeholder="Email" required>
-                            <input type="password" id="login-password" placeholder="Пароль" required>
-                            <button type="submit">Войти</button>
-                        </form>
-                        <p class="register-link">Нет аккаунта? <a href="#" @click.prevent="go('register')">Зарегистрироваться</a></p>
-                    </div>
-                </div>
-            </div>
+  <div id="app-root" style="display:none;" x-data="app()" x-init="init()" x-cloak>
 
-            <div id="register-page" class="page" style="display:none;">
-                <div class="form-container">
-                    <h2>Регистрация</h2>
-                    <form @submit.prevent="register($event)">
-                        <input type="text" id="reg-first-name" placeholder="Имя" required>
-                        <input type="text" id="reg-last-name" placeholder="Фамилия" required>
-                        <input type="email" id="reg-email" placeholder="Email" required>
-                        <input type="tel" id="reg-phone" placeholder="Телефон" required>
-                        <input type="password" id="reg-password" placeholder="Пароль" required>
-                        <button type="submit">Зарегистрироваться</button>
-                    </form>
-                    <p style="text-align: center; margin-top: 1rem;">Уже есть аккаунт? <a href="#" @click.prevent="go('home')" style="color: var(--primary-color); font-weight: 600;">Войти</a></p>
-                </div>
-            </div>
-
-            <div id="projects-page" class="page" style="display:none;">
-                <h2>Проекты</h2>
-                <div id="projects-controls">
-                    <button onclick="window.Utils.showPage('create-project')" id="create-project-btn" style="display:none;">Создать проект</button>
-                    <select id="project-filter">
-                        <option value="">Все проекты</option>
-                        <option value="активен">Активные</option>
-                        <option value="завершён">Завершенные</option>
-                        <option value="архивирован">Архивированные</option>
-                    </select>
-                    <button onclick="window.Projects.loadProjects()">Обновить</button>
-                </div>
-                <div id="projects-list"></div>
-            </div>
-
-            <div id="create-project-page" class="page" style="display:none;">
-                <h2>Создать проект</h2>
-                <div class="form-container">
-                    <form onsubmit="window.Projects.createProject(event)">
-                        <input type="text" id="project-title" placeholder="Название проекта" required>
-                        <textarea id="project-short-desc" placeholder="Краткое описание" required></textarea>
-                        <textarea id="project-full-desc" placeholder="Полное описание" required></textarea>
-                        <select id="project-category" required>
-                            <option value="">Выберите категорию</option>
-                        </select>
-                        <div id="project-tags-container" style="margin: 1rem 0;">
-                            <label>Теги проекта:</label>
-                            <div id="project-tags-list" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.5rem 0;"></div>
-                            <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
-                                <input type="text" id="project-tag-input" placeholder="Добавить тег" style="flex: 1;">
-                                <button type="button" onclick="window.Projects.addProjectTag()">+ Добавить</button>
-                            </div>
-                        </div>
-                        <div style="display: flex; gap: 1rem;">
-                            <button type="submit">Создать</button>
-                            <button type="button" onclick="window.Utils.showPage('projects')" class="secondary">Отмена</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <div id="project-detail-page" class="page" style="display:none;">
-                <div class="project-detail-content-wrapper">
-                    <div class="project-main-content">
-                        <div class="project-detail-tabs">
-                            <button class="project-tab active" onclick="showProjectDetailTab('tasks')" id="tasks-tab" style="display:none;">Задачи</button>
-                            <button class="project-tab" onclick="showProjectDetailTab('participants')" id="participants-tab" style="display:none;">Участники</button>
-                            <button class="project-tab" onclick="showProjectDetailTab('chat')" id="chat-tab" style="display:none;">Чат</button>
-                        </div>
-                        
-                        <div id="participation-form-section" style="display:none;">
-                            <div class="participation-form-card">
-                                <h3>Подать заявку на участие</h3>
-                                <form onsubmit="window.Projects.submitParticipationRequest(event)">
-                                    <textarea id="participation-comment" placeholder="Расскажите, почему вы хотите участвовать в этом проекте" required></textarea>
-                                    <input type="url" id="participation-resume" placeholder="URL резюме (необязательно)">
-                                    <button type="submit">Подать заявку</button>
-                                </form>
-                            </div>
-                        </div>
-                        
-                        <div id="project-tasks-tab" class="project-tab-content active" style="display:none;">
-                            <div class="tasks-header">
-                                <h3>Задачи проекта</h3>
-                                <button onclick="window.Tasks.showCreateTaskForm()" id="create-task-btn" style="display:none;" class="create-task-btn">+ Создать задачу</button>
-                            </div>
-                            <div id="tasks-container" class="scrollable-content"></div>
-                        </div>
-                        
-                        <div id="project-participants-tab" class="project-tab-content" style="display:none;">
-                            <div class="participants-list scrollable-content" id="participants-list"></div>
-                        </div>
-                        
-                        <div id="project-chat-tab" class="project-tab-content" style="display:none;">
-                            <div class="project-chat-container">
-                                <div id="chat-messages" class="chat-messages-container scrollable-content"></div>
-                                <div id="chat-input-container" class="chat-input-container">
-                                    <input type="text" id="chat-message-input" placeholder="Введите сообщение..." onkeypress="if(event.key==='Enter') { event.preventDefault(); window.Chat.sendChatMessage(); }">
-                                    <button onclick="window.Chat.sendChatMessage()" class="send-button">
-                                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                                            <path d="M18 2L9 11M18 2L12 18L9 11M18 2L2 8L9 11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="project-sidebar">
-                        <div class="project-info-card">
-                            <h4 id="project-sidebar-title">Информация о проекте</h4>
-                            <div id="project-sidebar-info"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="profile-page" class="page" style="display:none;">
-                <div class="profile-container">
-                    <div class="profile-header">
-                        <div class="profile-avatar" id="profile-avatar">
-                            <span id="profile-avatar-text"></span>
-                        </div>
-                        <div class="profile-info">
-                            <h1 id="profile-name"></h1>
-                            <p id="profile-role" class="profile-role"></p>
-                        </div>
-                        <button onclick="window.editProfile()" class="edit-profile-btn">Редактировать</button>
-                    </div>
-                    <div class="profile-content-wrapper">
-                        <div class="profile-main">
-                            <div id="profile-content"></div>
-                            <div id="organizer-request-section" style="display:none;">
-                                <div class="organizer-request-card">
-                                    <h3>Заявка на роль организатора</h3>
-                                    <form onsubmit="window.Auth.submitOrganizerRequest(event)">
-                                        <textarea id="organizer-experience" placeholder="Опишите ваш опыт в организации проектов (Можете прикрепить URL с резюме)" required></textarea>
-                                        <button type="submit">Подать заявку</button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="my-projects-page" class="page" style="display:none;">
-                <h2>Мои проекты</h2>
-                <div id="my-projects-list"></div>
-            </div>
-
-            <div id="chats-page" class="page" style="display:none;">
-                <div class="telegram-chat-layout">
-                    <div class="chat-sidebar">
-                        <div class="chat-sidebar-header">
-                            <h2>Чаты проектов</h2>
-                        </div>
-                        <div class="chat-project-list" id="chat-project-list">
-                            <p style="padding: var(--spacing-lg); text-align: center; color: var(--text-secondary);">Загрузка проектов...</p>
-                        </div>
-                        <select id="chat-project-select" onchange="window.Chat.loadProjectChats()" style="display: none;">
-                            <option value="">Выберите проект</option>
-                        </select>
-                    </div>
-                    <div class="chat-main" id="chats-content">
-                        <div class="chat-empty-state">
-                            <div class="empty-state-icon">💬</div>
-                            <h3>Выберите проект для просмотра чата</h3>
-                            <p>Список ваших проектов отображается слева</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="admin-page" class="page" style="display:none;">
-                <h2>Админ-панель</h2>
-                <div class="admin-tabs">
-                    <button onclick="window.Admin.showAdminTab('users')" class="active">Пользователи</button>
-                    <button onclick="window.Admin.showAdminTab('organizer-requests')">Заявки организаторов</button>
-                    <button onclick="window.Admin.showAdminTab('reports')">Отчеты</button>
-                </div>
-                <div id="admin-content"></div>
-            </div>
-        </main>
+    <div x-show="toast.show" x-transition class="fixed top-5 right-5 z-50 px-4 py-2.5 rounded-lg shadow-pop text-sm font-medium"
+         :class="{
+          'bg-emerald-500 text-white': toast.type==='success',
+          'bg-rose-500 text-white': toast.type==='error',
+          'bg-ink-800 text-white': toast.type==='info'
+         }">
+      <span x-text="toast.text"></span>
     </div>
 
-    <!-- SVG фильтры для дальтоников -->
-    <svg xmlns="http://www.w3.org/2000/svg" style="position: absolute; width: 0; height: 0;">
-        <defs>
-            <filter id="protanopia">
-                <feColorMatrix type="matrix" values="0.567, 0.433, 0, 0, 0 0.558, 0.442, 0, 0, 0 0, 0.242, 0.758, 0, 0 0, 0, 0, 1, 0"/>
-            </filter>
-            <filter id="deuteranopia">
-                <feColorMatrix type="matrix" values="0.625, 0.375, 0, 0, 0 0.7, 0.3, 0, 0, 0 0, 0.3, 0.7, 0, 0 0, 0, 0, 1, 0"/>
-            </filter>
-            <filter id="tritanopia">
-                <feColorMatrix type="matrix" values="0.95, 0.05, 0, 0, 0 0, 0.433, 0.567, 0, 0 0, 0.475, 0.525, 0, 0 0, 0, 0, 1, 0"/>
-            </filter>
-        </defs>
-    </svg>
-    <!-- Все модули уже подключены в head -->
+    <div x-show="!user">
+      <div data-include="partials/auth.html"></div>
+    </div>
+
+    <div x-show="user" class="min-h-screen flex bg-ink-50">
+      <div data-include="partials/sidebar-user.html"></div>
+      <div data-include="partials/sidebar-admin.html"></div>
+      <main class="flex-1 min-w-0 overflow-x-hidden">
+        <div data-include="partials/page-projects.html"></div>
+        <div data-include="partials/page-my-projects.html"></div>
+        <div data-include="partials/page-project-detail.html"></div>
+        <div data-include="partials/page-profile.html"></div>
+        <div data-include="partials/page-chats.html"></div>
+        <div data-include="partials/page-notifications.html"></div>
+        <div data-include="partials/page-admin.html"></div>
+      </main>
+    </div>
+
+    <div data-include="partials/modal-project.html"></div>
+    <div data-include="partials/modal-task.html"></div>
+    <div data-include="partials/modal-user.html"></div>
+    <div data-include="partials/modal-task-detail.html"></div>
+    <div data-include="partials/modal-invite.html"></div>
+  </div>
+
+  <script>
+    (async function bootstrap() {
+      try {
+        const root = document.getElementById('app-root');
+        const placeholders = Array.from(root.querySelectorAll('[data-include]'));
+        await Promise.all(placeholders.map(async el => {
+          const url = el.getAttribute('data-include');
+          try {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const html = await res.text();
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = html.trim();
+            const frag = document.createDocumentFragment();
+            while (wrapper.firstChild) frag.appendChild(wrapper.firstChild);
+            el.replaceWith(frag);
+          } catch (err) {
+            console.error('Failed to load partial', url, err);
+            const errDiv = document.createElement('div');
+            errDiv.className = 'p-4 text-rose-600 text-sm';
+            errDiv.textContent = 'Не удалось загрузить ' + url + ': ' + err.message;
+            el.replaceWith(errDiv);
+          }
+        }));
+      } catch (e) {
+        console.error('bootstrap fail', e);
+      } finally {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js';
+        s.onload = () => {
+          document.getElementById('app-root').style.display = '';
+          const bl = document.getElementById('boot-loader');
+          if (bl) bl.remove();
+        };
+        document.head.appendChild(s);
+      }
+    })();
+  </script>
+
 </body>
 </html>

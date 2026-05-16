@@ -1,0 +1,488 @@
+        <section x-show="page==='project-detail' && selectedProject" x-cloak class="px-6 py-4">
+          <button @click="go('projects')" class="text-xs text-ink-500 hover:text-brand-700 mb-3 flex items-center gap-1">← К списку проектов</button>
+
+          <div class="bg-white border border-ink-200 rounded-lg overflow-hidden mb-3 shadow-soft">
+            <div x-show="selectedProject.image_url" class="h-40 bg-cover bg-center" :style="'background-image: url(' + (selectedProject.image_url||'') + ')'"></div>
+            <div class="p-4">
+              <div class="flex items-start gap-4">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <h1 class="text-xl font-semibold text-ink-900 tracking-tight" x-text="selectedProject.title"></h1>
+                    <span class="text-[11px] px-1.5 py-0.5 rounded font-medium" :class="statusColor(selectedProject.status)" x-text="selectedProject.status"></span>
+                  </div>
+                  <p class="text-[14px] text-ink-600 mt-1" x-text="selectedProject.short_description"></p>
+                  <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-ink-500">
+                    <span class="flex items-center gap-1">Организатор: <span class="text-ink-800 font-medium" x-text="selectedProject.organizer_name"></span></span>
+                    <span x-show="isMember" class="px-1.5 py-0.5 rounded bg-brand-100 text-brand-700 font-semibold text-[11px]">Ваша роль: <span x-text="myProjectRoleLabel()"></span></span>
+                    <span class="flex items-center gap-1">📅 <span class="text-ink-700" x-text="formatDate(selectedProject.creation_date)"></span></span>
+                    <span x-show="selectedProject.planned_end_date" class="flex items-center gap-1">🎯 до <span class="text-ink-700" x-text="formatDate(selectedProject.planned_end_date)"></span></span>
+                    <span x-show="selectedProject.completion_date" class="flex items-center gap-1">✅ <span class="text-ink-700" x-text="formatDate(selectedProject.completion_date)"></span></span>
+                    <span class="flex items-center gap-1">👥 <span class="text-ink-700" x-text="participants.length"></span></span>
+                  </div>
+                  <div class="mt-2 flex flex-wrap gap-1" x-show="selectedProject.tags?.length">
+                    <template x-for="t in (selectedProject.tags || [])"><span class="text-[11px] px-1.5 py-0.5 bg-brand-50 text-brand-700 rounded font-medium" x-text="t"></span></template>
+                  </div>
+                </div>
+                <div x-show="canManage" class="flex flex-col gap-1.5 shrink-0">
+                  <button x-show="canCompleteProject()"
+                          @click="completeProject()"
+                          :disabled="!allTasksDone()"
+                          :title="allTasksDone() ? 'Завершить проект' : completeBlockReason()"
+                          class="text-xs px-3 py-1.5 rounded font-medium shadow-soft transition"
+                          :class="allTasksDone() ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-ink-100 text-ink-400 cursor-not-allowed'">
+                    ✓ Завершить проект
+                    <span x-show="!allTasksDone()" class="text-[10px] font-normal" x-text="'(' + completeBlockReason() + ')'"></span>
+                  </button>
+                  <button @click="openEditProject()" class="text-xs px-3 py-1.5 border border-ink-200 rounded hover:bg-ink-50">Редактировать</button>
+                  <button x-show="selectedProject.status==='активен'" @click="archiveProject()" class="text-xs px-3 py-1.5 border border-ink-200 rounded hover:bg-rose-50 text-rose-600">В архив</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white border border-ink-200 rounded-xl shadow-soft">
+            <div class="border-b border-ink-200 px-2 flex overflow-x-auto">
+              <button @click="projectTab='about'" class="px-4 py-3 text-sm border-b-2 transition whitespace-nowrap" :class="projectTab==='about' ? 'border-brand-600 text-brand-700 font-medium' : 'border-transparent text-ink-500 hover:text-ink-800'">О проекте</button>
+              <button @click="onProjectTab('goals')" class="px-4 py-3 text-sm border-b-2 transition whitespace-nowrap" :class="projectTab==='goals' ? 'border-brand-600 text-brand-700 font-medium' : 'border-transparent text-ink-500 hover:text-ink-800'">🎯 Цели</button>
+              <button x-show="isMember" @click="onProjectTab('tasks')" class="px-4 py-3 text-sm border-b-2 transition whitespace-nowrap" :class="projectTab==='tasks' ? 'border-brand-600 text-brand-700 font-medium' : 'border-transparent text-ink-500 hover:text-ink-800'">📋 Задачи</button>
+              <button x-show="isMember" @click="onProjectTab('participants')" class="px-4 py-3 text-sm border-b-2 transition whitespace-nowrap" :class="projectTab==='participants' ? 'border-brand-600 text-brand-700 font-medium' : 'border-transparent text-ink-500 hover:text-ink-800'">👥 Участники</button>
+              <button x-show="isMember" @click="onProjectTab('chat')" class="px-4 py-3 text-sm border-b-2 transition whitespace-nowrap" :class="projectTab==='chat' ? 'border-brand-600 text-brand-700 font-medium' : 'border-transparent text-ink-500 hover:text-ink-800'">💬 Чат</button>
+              <button x-show="canManage" @click="onProjectTab('analytics')" class="px-4 py-3 text-sm border-b-2 transition whitespace-nowrap" :class="projectTab==='analytics' ? 'border-brand-600 text-brand-700 font-medium' : 'border-transparent text-ink-500 hover:text-ink-800'">📈 Аналитика</button>
+            </div>
+
+            <div x-show="projectTab==='about'" x-cloak class="p-6 space-y-5">
+              <div>
+                <h3 class="text-sm font-semibold text-ink-700 mb-2 uppercase tracking-wide">Описание</h3>
+                <p class="text-ink-700 whitespace-pre-wrap leading-relaxed" x-text="selectedProject.full_description"></p>
+              </div>
+              <div x-show="selectedProject.goal_description">
+                <h3 class="text-sm font-semibold text-ink-700 mb-2 uppercase tracking-wide">🎯 Цели проекта</h3>
+                <p class="text-ink-700 whitespace-pre-wrap leading-relaxed" x-text="selectedProject.goal_description"></p>
+              </div>
+              <div x-show="requiredSkills && requiredSkills.length">
+                <h3 class="text-sm font-semibold text-ink-700 mb-2 uppercase tracking-wide">Требуемые навыки</h3>
+                <div class="flex flex-wrap gap-1.5">
+                  <template x-for="s in requiredSkills">
+                    <span class="text-xs px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded font-medium" x-text="s"></span>
+                  </template>
+                </div>
+              </div>
+
+              <div x-show="!isMember && user && selectedProject.organizer_id !== user.id" class="pt-4 border-t border-ink-100">
+                <template x-if="!myParticipationRequest">
+                  <div>
+                    <button x-show="!showParticipateForm" @click="showParticipateForm=true" class="bg-brand-600 hover:bg-brand-700 text-white text-sm px-5 py-2 rounded-lg font-medium shadow-soft">Подать заявку на участие</button>
+                    <form x-show="showParticipateForm" @submit.prevent="submitParticipation()" class="mt-3 space-y-3 bg-ink-50 p-4 rounded-lg border border-ink-200">
+                      <textarea x-model="participateDraft.comment" required rows="3" placeholder="Расскажите, почему вы хотите участвовать?" class="w-full px-3 py-2 border border-ink-200 rounded-lg text-sm bg-white"></textarea>
+                      <div class="flex gap-2">
+                        <input x-model="participateDraft.resume_url" type="text" placeholder="https://... или прикрепите файл" class="flex-1 px-3 py-2 border border-ink-200 rounded-lg text-sm bg-white">
+                        <label class="text-sm px-3 py-2 border border-ink-200 rounded-lg cursor-pointer hover:bg-ink-50 whitespace-nowrap bg-white">
+                          Загрузить
+                          <input type="file" class="hidden" @change="uploadField($event, 'participateDraft', 'resume_url')">
+                        </label>
+                      </div>
+                      <p x-show="participateDraft.resume_url" class="text-xs text-emerald-600 -mt-1">✓ <span x-text="fileLabel(participateDraft.resume_url)"></span></p>
+                      <div class="flex gap-2">
+                        <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white text-sm px-4 py-2 rounded-lg font-medium">Отправить</button>
+                        <button type="button" @click="showParticipateForm=false" class="text-sm px-4 py-2 text-ink-600 hover:bg-ink-100 rounded-lg">Отмена</button>
+                      </div>
+                    </form>
+                  </div>
+                </template>
+                <template x-if="myParticipationRequest">
+                  <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
+                    Ваша заявка: <span class="font-semibold" x-text="myParticipationRequest.status"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <div x-show="projectTab==='goals'" x-cloak class="p-6 space-y-5">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h3 class="font-semibold text-ink-900">Цели проекта</h3>
+                  <p class="text-xs text-ink-500 mt-0.5">Конкретные результаты, которых нужно достичь</p>
+                </div>
+                <button x-show="canManage" @click="showGoalForm = !showGoalForm" class="text-sm px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium" x-text="showGoalForm ? 'Отмена' : '+ Цель'"></button>
+              </div>
+
+              <div x-show="goals.length" class="bg-ink-50 rounded-lg p-3">
+                <div class="flex items-center justify-between mb-1.5 text-sm">
+                  <span class="font-medium text-ink-700">Прогресс</span>
+                  <span class="text-ink-600" x-text="goals.filter(g=>g.is_achieved).length + ' / ' + goals.length + ' достигнуто (' + goalProgress() + '%)'"></span>
+                </div>
+                <div class="h-2 bg-white rounded-full overflow-hidden border border-ink-200">
+                  <div class="h-full bg-gradient-to-r from-brand-500 to-emerald-500 transition-all" :style="'width: ' + goalProgress() + '%'"></div>
+                </div>
+              </div>
+
+              <form x-show="showGoalForm" @submit.prevent="saveGoal()" class="bg-ink-50 border border-ink-200 rounded-lg p-4 space-y-2">
+                <input x-model="goalDraft.title" required placeholder="Цель..." class="w-full px-3 py-2 border border-ink-200 rounded-lg text-sm bg-white">
+                <textarea x-model="goalDraft.description" rows="2" placeholder="Описание (опционально)" class="w-full px-3 py-2 border border-ink-200 rounded-lg text-sm bg-white"></textarea>
+                <button type="submit" class="text-sm px-4 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium">Добавить</button>
+              </form>
+
+              <div class="space-y-2">
+                <template x-for="g in goals" :key="g.id">
+                  <div class="flex items-start gap-3 border border-ink-200 rounded-lg p-3 group hover:bg-ink-50">
+                    <input type="checkbox" :checked="g.is_achieved" :disabled="!canManage" @change="toggleGoal(g)" class="mt-1 w-4 h-4 accent-brand-600 cursor-pointer">
+                    <div class="flex-1 min-w-0">
+                      <div class="font-medium text-sm" :class="g.is_achieved ? 'line-through text-ink-400' : 'text-ink-900'" x-text="g.title"></div>
+                      <p x-show="g.description" class="text-xs text-ink-500 mt-0.5" x-text="g.description"></p>
+                      <div x-show="g.is_achieved && g.achieved_date" class="text-[11px] text-emerald-600 mt-1">✓ достигнуто <span x-text="formatDate(g.achieved_date)"></span></div>
+                    </div>
+                    <button x-show="canManage" @click="deleteGoal(g)" class="opacity-0 group-hover:opacity-100 text-ink-400 hover:text-rose-600 text-sm">✕</button>
+                  </div>
+                </template>
+                <p x-show="!goals.length" class="text-center text-ink-400 text-sm py-6 italic">Цели пока не заданы</p>
+              </div>
+            </div>
+
+            <div x-show="projectTab==='tasks'" x-cloak class="p-6">
+              <div class="flex items-center justify-between mb-5">
+                <div class="flex items-center gap-2 bg-ink-100 rounded-lg p-0.5">
+                  <button @click="taskView='kanban'" class="px-3 py-1.5 text-xs rounded font-medium" :class="taskView==='kanban' ? 'bg-white shadow-soft text-ink-900' : 'text-ink-500 hover:text-ink-700'">📋 Канбан</button>
+                  <button @click="taskView='list'" class="px-3 py-1.5 text-xs rounded font-medium" :class="taskView==='list' ? 'bg-white shadow-soft text-ink-900' : 'text-ink-500 hover:text-ink-700'">☰ Список</button>
+                </div>
+                <button x-show="canManage" @click="openCreateTask()" class="bg-brand-600 hover:bg-brand-700 text-white text-sm px-4 py-2 rounded-lg font-medium shadow-soft">+ Задача</button>
+              </div>
+
+              <div x-show="taskView==='kanban'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                <template x-for="status in ['новая','в работе','на проверке','завершена']" :key="status">
+                  <div class="kanban-col bg-ink-100/60 rounded-lg p-2.5" @dragover="dragOver($event)" @drop="drop($event, status)">
+                    <div class="flex items-center justify-between px-1.5 mb-2">
+                      <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full" :class="
+                          status==='новая' ? 'bg-ink-400' :
+                          status==='в работе' ? 'bg-blue-500' :
+                          status==='на проверке' ? 'bg-violet-500' :
+                          'bg-emerald-500'"></span>
+                        <span class="text-[13px] font-semibold text-ink-700 capitalize" x-text="status"></span>
+                        <span class="text-[11px] text-ink-500" x-text="tasksByStatus(status).length"></span>
+                      </div>
+                    </div>
+                    <div class="space-y-2 px-0.5">
+                      <template x-for="t in tasksByStatus(status)" :key="t.id">
+                        <div class="rounded-lg p-2.5 shadow-soft hover:shadow-card border cursor-pointer transition"
+                             :class="priorityClasses(t.priority)"
+                             draggable="true" @dragstart="dragStart($event, t)" @click="openTask(t)">
+                          <div x-show="t.assigned_to === user?.id" class="text-[9px] font-bold tracking-wider text-brand-700 bg-brand-100 inline-block px-1.5 py-0.5 rounded mb-1">МОЯ ЗАДАЧА</div>
+                          <div class="flex items-start justify-between gap-2">
+                            <div class="text-[13px] font-medium text-ink-900 leading-snug" x-text="t.title"></div>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0 tracking-wider"
+                                  :class="priorityBadge(t.priority)"
+                                  :title="'Приоритет: ' + t.priority"
+                                  x-text="priorityIcon(t.priority)"></span>
+                          </div>
+                          <p x-show="t.description" class="text-[11px] text-ink-500 mt-1 line-clamp-2" x-text="t.description"></p>
+                          <div class="mt-1.5 flex items-center gap-2 text-[10px] text-ink-500 flex-wrap">
+                            <span class="flex items-center gap-0.5" :title="'Сложность ' + t.difficulty + '/5'">
+                              <template x-for="i in 5"><span :class="i <= t.difficulty ? 'text-brand-500' : 'text-ink-200'">●</span></template>
+                            </span>
+                            <span x-show="t.due_date" class="flex items-center gap-0.5"
+                                  :class="t.overdue ? 'text-rose-600 font-medium' : ''">
+                              <span x-text="formatDate(t.due_date)"></span>
+                            </span>
+                            <span x-show="t.quality_rating" class="ml-auto flex items-center gap-0.5 text-amber-500">
+                              <template x-for="i in t.quality_rating"><span>★</span></template>
+                            </span>
+                          </div>
+                          <div x-show="t.assigned_to" class="mt-1.5 pt-1.5 border-t border-ink-100/70 flex items-center gap-1.5 text-[11px]">
+                            <div class="w-4 h-4 rounded-full bg-ink-200 flex items-center justify-center text-[9px] font-semibold text-ink-700"
+                                 x-text="(participantName(t.assigned_to)||'?')[0]?.toUpperCase()"></div>
+                            <span class="text-ink-600 truncate" x-text="participantName(t.assigned_to)"></span>
+                          </div>
+                        </div>
+                      </template>
+                      <p x-show="!tasksByStatus(status).length" class="text-center text-ink-400 text-[11px] py-3 italic">пусто</p>
+                    </div>
+                  </div>
+                </template>
+              </div>
+
+              <div x-show="taskView==='list'" class="space-y-2">
+                <template x-for="t in tasks" :key="t.id">
+                  <div class="border border-ink-200 rounded-lg p-3 hover:shadow-soft cursor-pointer flex items-center gap-3"
+                       :class="priorityClasses(t.priority)"
+                       @click="openTask(t)">
+                    <span class="text-[10px] px-1.5 py-0.5 rounded font-bold tracking-wider shrink-0" :class="priorityBadge(t.priority)" x-text="priorityIcon(t.priority)"></span>
+                    <span class="text-xs px-2 py-0.5 rounded font-medium shrink-0" :class="statusColor(t.status)" x-text="t.status"></span>
+                    <div class="flex-1 min-w-0">
+                      <div class="font-medium text-ink-900 text-sm flex items-center gap-2">
+                        <span x-show="t.assigned_to === user?.id" class="text-[10px] font-bold tracking-wider text-brand-700 bg-brand-100 px-1.5 py-0.5 rounded">МОЯ ЗАДАЧА</span>
+                        <span x-text="t.title"></span>
+                      </div>
+                      <div class="text-xs text-ink-500 line-clamp-1" x-text="t.description"></div>
+                    </div>
+                    <div class="text-xs flex items-center gap-3 shrink-0">
+                      <span x-show="t.due_date" :class="t.overdue ? 'text-rose-600 font-medium' : 'text-ink-500'" x-text="formatDate(t.due_date)"></span>
+                      <span x-show="t.assigned_to" class="text-ink-600" x-text="participantName(t.assigned_to)"></span>
+                    </div>
+                  </div>
+                </template>
+                <p x-show="!tasks.length" class="text-center text-ink-400 py-6 text-sm">Задач пока нет</p>
+              </div>
+            </div>
+
+            <div x-show="projectTab==='participants'" x-cloak class="p-6 space-y-6">
+              <div>
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="text-sm font-semibold text-ink-700 uppercase tracking-wide">Команда проекта</h3>
+                  <button x-show="canManage" @click="openInviteForm()" class="text-xs px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium shadow-soft">Пригласить</button>
+                </div>
+                <div class="space-y-2">
+                  <template x-for="p in participants" :key="p.id">
+                    <div class="border border-ink-200 rounded-lg p-3 hover:bg-ink-50">
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                          <div class="w-9 h-9 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-semibold text-sm" x-text="((p.first_name||'?')[0]+'').toUpperCase()"></div>
+                          <div>
+                            <div class="text-sm font-medium text-ink-900" x-text="(p.first_name || '') + ' ' + (p.last_name || '')"></div>
+                            <div class="text-xs text-ink-500" x-text="p.email"></div>
+                          </div>
+                        </div>
+                        <div>
+                          <select x-show="canManage && p.user_id !== selectedProject.organizer_id" @change="setParticipantRole(p, $event.target.value)" class="text-xs border border-ink-200 rounded px-2 py-1">
+                            <option :selected="p.role==='участник'">участник</option>
+                            <option :selected="p.role==='заместитель'">заместитель</option>
+                            <option :selected="p.role==='руководитель'">руководитель</option>
+                          </select>
+                          <span x-show="!canManage || p.user_id === selectedProject.organizer_id" class="text-xs px-2 py-1 bg-brand-50 text-brand-700 rounded font-medium" x-text="p.role"></span>
+                        </div>
+                      </div>
+                      <div x-show="p.skills && p.skills.length" class="mt-2 pl-12 flex flex-wrap items-center gap-1">
+                        <span class="text-[10px] uppercase tracking-wide text-ink-400 mr-1">Навыки:</span>
+                        <template x-for="s in (p.skills || [])" :key="s">
+                          <span class="text-[10px] px-1.5 py-0.5 bg-brand-50 text-brand-700 rounded font-medium" x-text="s"></span>
+                        </template>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+              <div x-show="canManage && requests.filter(x=>x.status==='в рассмотрении').length">
+                <h3 class="text-sm font-semibold text-ink-700 mb-3 uppercase tracking-wide">Заявки на участие</h3>
+                <div class="space-y-2">
+                  <template x-for="r in requests.filter(x=>x.status==='в рассмотрении')" :key="r.id">
+                    <div class="border border-ink-200 rounded-lg p-3 bg-amber-50/40">
+                      <div class="flex items-start gap-3">
+                        <div class="w-9 h-9 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-semibold text-sm shrink-0" x-text="((r.first_name||'?')[0]+'').toUpperCase()"></div>
+                        <div class="flex-1 min-w-0">
+                          <div class="font-medium text-ink-900 text-sm" x-text="(r.first_name||'') + ' ' + (r.last_name||'')"></div>
+                          <div class="text-[11px] text-ink-500" x-text="r.email"></div>
+                        </div>
+                        <span class="text-[11px] text-ink-500 shrink-0" x-text="formatDate(r.submission_date)"></span>
+                      </div>
+                      <div class="text-[13px] text-ink-800 mt-2" x-text="r.comment"></div>
+                      <div x-show="r.skills && r.skills.length" class="mt-2 flex flex-wrap gap-1">
+                        <span class="text-[10px] uppercase tracking-wide text-ink-400 mr-1">Навыки:</span>
+                        <template x-for="s in (r.skills || [])"><span class="text-[10px] px-1.5 py-0.5 bg-brand-50 text-brand-700 rounded font-medium" x-text="s"></span></template>
+                      </div>
+                      <a x-show="r.resume_url" :href="r.resume_url" target="_blank" class="block mt-1 text-[11px] text-brand-600 hover:underline truncate" x-text="fileLabel(r.resume_url)"></a>
+                      <div class="mt-2 flex gap-1.5">
+                        <button @click="approveRequest(r.id)" class="text-xs px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-medium">Принять</button>
+                        <button @click="rejectRequest(r.id)" class="text-xs px-3 py-1 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded font-medium">Отклонить</button>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <div x-show="canManage">
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="text-sm font-semibold text-ink-700 uppercase tracking-wide">
+                    Отправленные приглашения
+                    <span x-show="projectInvitations.length" class="text-[11px] text-ink-400 font-normal" x-text="'(' + projectInvitations.length + ')'"></span>
+                  </h3>
+                  <div class="flex items-center gap-2">
+                    <button x-show="projectInvitations.length > 1" @click="cancelAllProjectInvitations()" class="text-[11px] px-2 py-1 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded font-medium">Отменить все</button>
+                    <button @click="loadProjectInvitations()" class="text-[11px] text-ink-500 hover:text-ink-700">Обновить</button>
+                  </div>
+                </div>
+                <p x-show="!projectInvitations.length" class="text-xs text-ink-400 italic">Активных приглашений нет. Принятые и отклонённые скрыты автоматически.</p>
+                <div class="space-y-1.5">
+                  <template x-for="inv in projectInvitations" :key="inv.id">
+                    <div class="border border-amber-200 bg-amber-50/40 rounded-lg p-2.5 flex items-center gap-2.5 text-[13px] hover:bg-amber-50">
+                      <span class="text-[11px] px-1.5 py-0.5 rounded font-medium shrink-0 bg-amber-100 text-amber-700">Ожидает</span>
+                      <div class="flex-1 min-w-0">
+                        <div class="truncate">
+                          <span x-show="inv.recipient_first_name" x-text="(inv.recipient_first_name||'') + ' ' + (inv.recipient_last_name||'')"></span>
+                          <span x-show="!inv.recipient_first_name && inv.recipient_email" x-text="inv.recipient_email"></span>
+                          <span x-show="inv.group_name" class="text-[11px] text-ink-500"> · группа <span x-text="inv.group_name"></span></span>
+                        </div>
+                      </div>
+                      <span class="text-[11px] text-ink-400 shrink-0" x-text="formatDate(inv.created_at)"></span>
+                      <button @click="cancelProjectInvitation(inv)" class="text-[11px] text-rose-600 hover:underline shrink-0">Отменить</button>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+
+            <div x-show="projectTab==='analytics'" x-cloak class="p-6 space-y-5">
+              <div class="bg-white border border-ink-200 rounded-lg p-3 flex flex-wrap items-end gap-2.5 shadow-soft">
+                <div>
+                  <label class="text-[10px] uppercase tracking-wide text-ink-500 block mb-1">Период с</label>
+                  <input type="date" x-model="projectAnalyticsFrom" class="px-2.5 py-1.5 border border-ink-200 rounded text-xs">
+                </div>
+                <div>
+                  <label class="text-[10px] uppercase tracking-wide text-ink-500 block mb-1">по</label>
+                  <input type="date" x-model="projectAnalyticsTo" class="px-2.5 py-1.5 border border-ink-200 rounded text-xs">
+                </div>
+                <button @click="loadProjectAnalytics()" class="text-xs px-3 py-1.5 bg-brand-600 text-white rounded font-medium hover:bg-brand-700">Применить</button>
+                <button @click="projectAnalyticsFrom=''; projectAnalyticsTo=''; loadProjectAnalytics()" class="text-xs px-2.5 py-1.5 text-ink-600 hover:bg-ink-100 rounded">Сбросить</button>
+                <button @click="downloadProjectKPIExcel()" class="ml-auto text-xs px-3 py-1.5 bg-emerald-600 text-white rounded font-medium hover:bg-emerald-700 shadow-soft">📊 Скачать KPI-отчёт (Excel)</button>
+              </div>
+
+              <template x-if="projectDashboard">
+                <div class="space-y-5">
+                  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div class="bg-white border border-ink-200 rounded-xl p-4 shadow-soft">
+                      <div class="text-xs text-ink-500 uppercase tracking-wide">Готовность</div>
+                      <div class="text-3xl font-semibold text-brand-600 mt-1" x-text="Math.round(projectDashboard.kpi.completion_rate) + '%'"></div>
+                      <div class="text-xs text-ink-500 mt-1" x-text="projectDashboard.kpi.tasks_completed + ' из ' + projectDashboard.kpi.tasks_total + ' задач'"></div>
+                    </div>
+                    <div class="bg-white border border-ink-200 rounded-xl p-4 shadow-soft">
+                      <div class="text-xs text-ink-500 uppercase tracking-wide">Задач в срок</div>
+                      <div class="text-3xl font-semibold mt-1" :class="projectDashboard.kpi.on_time_rate >= 80 ? 'text-emerald-600' : projectDashboard.kpi.on_time_rate < 50 ? 'text-rose-600' : 'text-amber-500'" x-text="Math.round(projectDashboard.kpi.on_time_rate) + '%'"></div>
+                      <div class="text-xs text-ink-500 mt-1">% задач, завершённых до дедлайна</div>
+                    </div>
+                    <div class="bg-white border border-ink-200 rounded-xl p-4 shadow-soft">
+                      <div class="text-xs text-ink-500 uppercase tracking-wide">Среднее время задачи</div>
+                      <div class="text-3xl font-semibold text-ink-900 mt-1" x-text="projectDashboard.kpi.avg_task_days.toFixed(1) + ' д'"></div>
+                      <div class="text-xs text-ink-500 mt-1">От создания до завершения</div>
+                    </div>
+                    <div class="bg-white border border-ink-200 rounded-xl p-4 shadow-soft">
+                      <div class="text-xs text-ink-500 uppercase tracking-wide">Среднее качество</div>
+                      <div class="mt-1 flex items-center gap-2">
+                        <div class="text-3xl font-semibold text-amber-500" x-text="projectDashboard.kpi.avg_quality > 0 ? projectDashboard.kpi.avg_quality.toFixed(1) : ''"></div>
+                        <div x-show="projectDashboard.kpi.avg_quality > 0" class="text-amber-500">
+                          <template x-for="i in 5"><span :class="i <= Math.round(projectDashboard.kpi.avg_quality) ? '' : 'text-ink-200'">★</span></template>
+                        </div>
+                      </div>
+                      <div class="text-xs text-ink-500 mt-1">Оценка руководителя</div>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                    <div class="bg-white border border-ink-200 rounded-xl p-4 shadow-soft">
+                      <div class="text-xs text-ink-500 uppercase tracking-wide">Достижение целей</div>
+                      <div class="mt-2 flex items-end gap-2">
+                        <div class="text-3xl font-semibold text-emerald-600" x-text="projectDashboard.kpi.goals_total ? Math.round(projectDashboard.kpi.goals_rate) + '%' : ''"></div>
+                        <div x-show="projectDashboard.kpi.goals_total" class="text-xs text-ink-500 pb-1" x-text="'(' + projectDashboard.kpi.goals_achieved + '/' + projectDashboard.kpi.goals_total + ')'"></div>
+                      </div>
+                      <div x-show="projectDashboard.kpi.goals_total" class="mt-2 h-2 bg-ink-100 rounded-full overflow-hidden">
+                        <div class="h-full bg-gradient-to-r from-brand-500 to-emerald-500" :style="'width: ' + Math.round(projectDashboard.kpi.goals_rate) + '%'"></div>
+                      </div>
+                    </div>
+                    <div class="bg-white border border-ink-200 rounded-xl p-4 shadow-soft">
+                      <div class="text-xs text-ink-500 uppercase tracking-wide">Соблюдение сроков проекта</div>
+                      <div class="mt-2">
+                        <span x-show="projectDashboard.kpi.on_schedule === true" class="text-base font-semibold text-emerald-600" x-text="selectedProject?.status === 'завершён' ? '✓ Закрыт вовремя' : '✓ В графике'"></span>
+                        <span x-show="projectDashboard.kpi.on_schedule === false" class="text-base font-semibold text-rose-600" x-text="selectedProject?.status === 'завершён' ? '⚠ С опозданием' : '⚠ Риск срыва'"></span>
+                        <span x-show="projectDashboard.kpi.on_schedule === null" class="text-base text-ink-400">Срок не задан</span>
+                      </div>
+                      <div x-show="projectDashboard.kpi.days_to_deadline !== null" class="text-xs text-ink-500 mt-1">До планового окончания: <span x-text="projectDashboard.kpi.days_to_deadline + ' дн.'"></span></div>
+                    </div>
+                    <div class="bg-white border border-ink-200 rounded-xl p-4 shadow-soft">
+                      <div class="text-xs text-ink-500 uppercase tracking-wide">Активные участники</div>
+                      <div class="mt-2 text-3xl font-semibold text-ink-900">
+                        <span x-text="projectDashboard.kpi.active_participants"></span>
+                        <span class="text-ink-300 text-2xl">/</span>
+                        <span class="text-ink-400 text-2xl" x-text="projectDashboard.kpi.participants_count"></span>
+                      </div>
+                      <div class="text-xs text-ink-500 mt-1">Те, у кого есть выполненные задачи или комментарии</div>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    <div class="bg-white border border-ink-200 rounded-xl p-5 shadow-soft">
+                      <div class="font-semibold text-ink-900">Распределение задач</div>
+                      <div class="text-xs text-ink-500 mb-3">По статусам</div>
+                      <div class="h-56"><canvas id="chart-proj-status"></canvas></div>
+                    </div>
+                    <div class="bg-white border border-ink-200 rounded-xl p-5 shadow-soft">
+                      <div class="font-semibold text-ink-900">Топ участников</div>
+                      <div class="text-xs text-ink-500 mb-3">По выполненным задачам и задачам в срок</div>
+                      <div class="h-56"><canvas id="chart-proj-users"></canvas></div>
+                    </div>
+                  </div>
+
+                  <div class="bg-white border border-ink-200 rounded-xl overflow-hidden shadow-soft">
+                    <div class="px-4 py-3 text-xs font-semibold text-ink-500 uppercase bg-ink-50 border-b border-ink-200">Рейтинг участников по KPI</div>
+                    <div class="overflow-x-auto">
+                      <table class="min-w-full text-sm">
+                        <thead class="bg-ink-50 text-ink-500 uppercase text-xs">
+                          <tr>
+                            <th class="px-3 py-2 text-left">Участник</th>
+                            <th class="px-3 py-2 text-center">Задач</th>
+                            <th class="px-3 py-2 text-center">Выполнено</th>
+                            <th class="px-3 py-2 text-center">% в срок</th>
+                            <th class="px-3 py-2 text-center">Ср. качество</th>
+                            <th class="px-3 py-2 text-center">Комм.</th>
+                            <th class="px-3 py-2 text-center">Сообщ.</th>
+                            <th class="px-3 py-2 text-center" title="Общий вклад в проект: комментарии + сообщения + действия из лога">Вклад в проект</th>
+                            <th class="px-3 py-2 text-center" title="Из последних 30 дней — в скольких юзер совершал действия по этому проекту. DISTINCT по дате.">Регулярность, д/мес</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <template x-for="u in (projectDashboard.user_kpis || [])" :key="u.user_id">
+                            <tr class="border-t border-ink-100">
+                              <td class="px-3 py-2"><div class="font-medium" x-text="u.first_name + ' ' + u.last_name"></div><div class="text-[11px] text-ink-500" x-text="u.email"></div></td>
+                              <td class="px-3 py-2 text-center" x-text="u.tasks_assigned"></td>
+                              <td class="px-3 py-2 text-center font-medium" x-text="u.tasks_completed"></td>
+                              <td class="px-3 py-2 text-center" :class="u.on_time_percent >= 80 ? 'text-emerald-600' : u.on_time_percent < 50 && u.tasks_completed ? 'text-rose-600' : ''" x-text="u.tasks_completed ? u.on_time_percent.toFixed(0) + '%' : ''"></td>
+                              <td class="px-3 py-2 text-center" x-text="u.avg_quality > 0 ? '★ ' + u.avg_quality.toFixed(1) : ''"></td>
+                              <td class="px-3 py-2 text-center" x-text="u.comments_count"></td>
+                              <td class="px-3 py-2 text-center" x-text="u.messages_count"></td>
+                              <td class="px-3 py-2 text-center font-medium text-brand-700">
+                                <span x-text="u.activity_score"></span>
+                                <span class="text-[10px] text-ink-400 font-normal">соб.</span>
+                              </td>
+                              <td class="px-3 py-2 text-center">
+                                <div class="text-xs" :class="u.regularity_pct >= 50 ? 'text-emerald-600' : u.regularity_pct < 20 ? 'text-rose-500' : ''">
+                                  <span x-text="u.active_days_30 + '/30'"></span>
+                                  <span class="text-[10px] text-ink-400">д</span>
+                                  <span class="text-ink-500" x-text="'(' + Math.round(u.regularity_pct) + '%)'"></span>
+                                </div>
+                              </td>
+                            </tr>
+                          </template>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <div x-show="projectTab==='chat'" x-cloak class="flex flex-col h-[60vh]">
+              <div id="chat-scroll" class="flex-1 overflow-y-auto p-5 space-y-2 scrollbar-thin">
+                <template x-for="m in messages" :key="m.id">
+                  <div class="flex" :class="m.user_id === user?.id ? 'justify-end' : 'justify-start'">
+                    <div class="max-w-[70%] flex flex-col" :class="m.user_id === user?.id ? 'items-end' : 'items-start'">
+                      <div class="flex items-center gap-1.5 mb-0.5 px-1">
+                        <span class="text-[11px] font-semibold text-ink-700" x-text="m.author_name || 'Неизвестный'"></span>
+                        <span x-show="m.author_role" class="text-[10px] px-1.5 py-0.5 rounded font-medium"
+                              :class="m.author_role === 'руководитель' ? 'bg-amber-100 text-amber-800' :
+                                      m.author_role === 'заместитель' ? 'bg-indigo-100 text-indigo-700' :
+                                      'bg-ink-100 text-ink-600'"
+                              x-text="m.author_role"></span>
+                      </div>
+                      <div class="px-3.5 py-2 rounded-2xl text-sm shadow-soft"
+                           :class="m.user_id === user?.id ? 'bg-brand-600 text-white rounded-br-md' : 'bg-white border border-ink-200 text-ink-800 rounded-bl-md'">
+                        <div x-text="m.message_text"></div>
+                        <div class="text-[10px] mt-1 opacity-70" x-text="new Date(m.sent_at).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})"></div>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+                <p x-show="!messages.length" class="text-center text-ink-400 py-8 text-sm">Сообщений пока нет начните разговор</p>
+              </div>
+              <div class="border-t border-ink-200 p-3 flex gap-2 bg-ink-50">
+                <input x-model="newMessage" placeholder="Сообщение..." class="flex-1 px-4 py-2 border border-ink-200 rounded-full text-sm bg-white" @keydown.enter.prevent="sendMessage()">
+                <button @click="sendMessage()" class="bg-brand-600 hover:bg-brand-700 text-white text-sm px-5 rounded-full font-medium">Отправить</button>
+              </div>
+            </div>
+          </div>
+        </section>

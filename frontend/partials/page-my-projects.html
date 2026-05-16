@@ -1,0 +1,24 @@
+        <section x-show="page==='my-projects'" x-cloak class="px-6 py-5">
+          <h1 class="text-xl font-semibold text-ink-900 tracking-tight">Мои проекты</h1>
+          <p class="text-xs text-ink-500 mt-0.5 mb-4">Проекты, в которых вы участвуете или которыми руководите</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            <template x-for="p in myProjects" :key="p.id">
+              <div class="bg-white border border-ink-200 rounded-lg overflow-hidden hover:shadow-card hover:border-brand-200 transition cursor-pointer" @click="openProject(p.id)">
+                <div class="aspect-[16/9] bg-gradient-to-br from-brand-100 via-brand-50 to-white flex items-center justify-center text-center relative overflow-hidden">
+                  <img x-show="p.image_url" :src="p.image_url" class="absolute inset-0 w-full h-full object-cover" alt="">
+                  <div x-show="!p.image_url" class="px-3 text-base font-semibold text-ink-700 leading-tight" x-text="p.title"></div>
+                </div>
+                <div class="p-3">
+                  <div class="flex items-start justify-between gap-2">
+                    <h3 class="font-semibold text-ink-900 text-[14px] leading-snug line-clamp-2" x-text="p.title"></h3>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0" :class="statusColor(p.status)" x-text="p.status"></span>
+                  </div>
+                  <p class="text-[12px] text-ink-600 line-clamp-2 mt-1" x-text="p.short_description"></p>
+                  <div class="mt-2 inline-flex text-[10px] px-1.5 py-0.5 bg-brand-50 text-brand-700 rounded font-medium"
+                       x-text="{organizer:'Организатор',leader:'Руководитель',participant:'Участник'}[p.user_role] || p.user_role"></div>
+                </div>
+              </div>
+            </template>
+            <p x-show="!myProjects.length" class="col-span-full text-center text-ink-400 py-12">У вас пока нет проектов</p>
+          </div>
+        </section>

@@ -2,6 +2,9 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
 	"io"
 	"log"
 	"net/http"
@@ -34,6 +37,8 @@ func main() {
 
 	r := mux.NewRouter()
 
+	r.HandleFunc("/api/files/upload", gateway.uploadHandler).Methods("POST", "OPTIONS")
+	r.HandleFunc("/api/files/{name}", gateway.fileHandler).Methods("GET")
 	r.PathPrefix("/api/users").HandlerFunc(gateway.proxyHandler(gateway.UserServiceURL))
 	r.PathPrefix("/api/projects").HandlerFunc(gateway.proxyHandler(gateway.ProjectServiceURL))
 	r.PathPrefix("/api/tasks").HandlerFunc(gateway.proxyHandler(gateway.TaskServiceURL))
@@ -46,11 +51,17 @@ func main() {
 	fs := http.FileServer(http.Dir(frontendPath))
 
 	r.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/" || r.URL.Path == "" {
+		path := r.URL.Path
+		if path == "/" || path == "" {
 			http.ServeFile(w, r, filepath.Join(frontendPath, "index.html"))
 			return
 		}
-		http.StripPrefix("/", fs).ServeHTTP(w, r)
+		fp := filepath.Join(frontendPath, path)
+		if info, err := os.Stat(fp); err == nil && !info.IsDir() {
+			http.StripPrefix("/", fs).ServeHTTP(w, r)
+			return
+		}
+		http.ServeFile(w, r, filepath.Join(frontendPath, "index.html"))
 	})
 
 	port := os.Getenv("PORT")
@@ -101,7 +112,7 @@ func (g *Gateway) proxyHandler(targetURL string) http.HandlerFunc {
 
 		req, err := http.NewRequest(r.Method, url, body)
 		if err != nil {
-			http.Error(w, "Failed to create request", http.StatusInternalServerError)
+			http.Error(w, "Не удалось создать запрос", http.StatusInternalServerError)
 			return
 		}
 
@@ -115,7 +126,7 @@ func (g *Gateway) proxyHandler(targetURL string) http.HandlerFunc {
 
 		resp, err := g.Client.Do(req)
 		if err != nil {
-			http.Error(w, "Failed to forward request", http.StatusInternalServerError)
+			http.Error(w, "Не удалось перенаправить запрос", http.StatusInternalServerError)
 			return
 		}
 		defer resp.Body.Close()
@@ -173,7 +184,6 @@ func (g *Gateway) proxyWebSocketHandler(targetURL string) http.HandlerFunc {
 			}
 			defer conn.Close()
 
-			// Подключение к целевому WebSocket серверу
 			targetConn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
 			if err != nil {
 				log.Printf("Failed to connect to target WebSocket: %v", err)
@@ -181,7 +191,6 @@ func (g *Gateway) proxyWebSocketHandler(targetURL string) http.HandlerFunc {
 			}
 			defer targetConn.Close()
 
-			// Проксирование сообщений
 			go func() {
 				for {
 					messageType, message, err := conn.ReadMessage()
@@ -204,10 +213,105 @@ func (g *Gateway) proxyWebSocketHandler(targetURL string) http.HandlerFunc {
 				}
 			}
 		} else {
-			// Обычный HTTP запрос
 			g.proxyHandler(targetURL)(w, r)
 		}
 	}
+}
+
+func uploadsDir() string {
+	dir := getEnv("UPLOADS_DIR", "")
+	if dir == "" {
+		workDir, _ := os.Getwd()
+		if strings.HasSuffix(workDir, "gateway") {
+			dir = filepath.Join(workDir, "..", "uploads")
+		} else {
+			dir = filepath.Join(workDir, "uploads")
+		}
+	}
+	_ = os.MkdirAll(dir, 0755)
+	return dir
+}
+
+func sanitizeFilename(name string) string {
+	name = filepath.Base(name)
+	repl := func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z',
+			r >= 'A' && r <= 'Z',
+			r >= '0' && r <= '9',
+			r == '-' || r == '.' || r == '_':
+			return r
+		case r >= 'А' && r <= 'я', r == 'Ё', r == 'ё':
+			return r
+		}
+		return '_'
+	}
+	name = strings.Map(repl, name)
+	for strings.Contains(name, "__") {
+		name = strings.ReplaceAll(name, "__", "_")
+	}
+	if len(name) > 80 {
+		base := strings.TrimSuffix(name, filepath.Ext(name))
+		ext := filepath.Ext(name)
+		if len(base) > 80-len(ext) {
+			base = base[:80-len(ext)]
+		}
+		name = base + ext
+	}
+	if name == "" || name == "." {
+		name = "file"
+	}
+	return name
+}
+
+func (g *Gateway) uploadHandler(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		http.Error(w, "Некорректная форма загрузки", http.StatusBadRequest)
+		return
+	}
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "Файл не передан", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	var idBytes [6]byte
+	if _, err := rand.Read(idBytes[:]); err != nil {
+		http.Error(w, "Ошибка генерации идентификатора", http.StatusInternalServerError)
+		return
+	}
+	id := hex.EncodeToString(idBytes[:])
+
+	safeName := sanitizeFilename(header.Filename)
+	stored := id + "__" + safeName
+
+	dst, err := os.Create(filepath.Join(uploadsDir(), stored))
+	if err != nil {
+		http.Error(w, "Ошибка сохранения файла", http.StatusInternalServerError)
+		return
+	}
+	defer dst.Close()
+	if _, err := io.Copy(dst, file); err != nil {
+		http.Error(w, "Ошибка записи файла", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"url":  "/api/files/" + stored,
+		"name": header.Filename,
+	})
+}
+
+func (g *Gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	name := filepath.Base(vars["name"])
+	if name == "" || strings.Contains(name, "..") {
+		http.Error(w, "Некорректное имя файла", http.StatusBadRequest)
+		return
+	}
+	http.ServeFile(w, r, filepath.Join(uploadsDir(), name))
 }
 
 func getFrontendPath() string {

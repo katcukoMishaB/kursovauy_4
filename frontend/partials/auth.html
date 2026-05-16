@@ -1,0 +1,53 @@
+    <div class="min-h-screen flex">
+      <div class="hidden md:flex md:w-1/2 bg-gradient-to-br from-brand-700 via-brand-600 to-brand-500 text-white p-12 flex-col justify-between">
+        <div>
+          <div class="text-2xl font-semibold tracking-tight">Краудсорсинговые проекты</div>
+        </div>
+        <div class="flex-1 flex items-center -mt-8">
+          <h1 class="text-5xl xl:text-6xl font-semibold leading-[1.1] tracking-tight">Информационная&nbsp;система организации краудсорсинговых проектов внутри университета</h1>
+        </div>
+        <div class="text-brand-200 text-xs">© Информационная система организации краудсорсинговых проектов внутри университета</div>
+      </div>
+      <div class="flex-1 flex items-center justify-center p-8 bg-white">
+        <div class="w-full max-w-md">
+          <template x-if="page==='home'">
+            <div>
+              <h2 class="text-2xl font-semibold text-ink-900">Вход в систему</h2>
+              <p class="text-ink-500 mt-1">Войдите, чтобы продолжить работу с проектами</p>
+              <form @submit.prevent="login()" class="mt-8 space-y-4">
+                <div>
+                  <label class="text-sm font-medium text-ink-700">Email</label>
+                  <input type="email" x-model="loginForm.email" required class="mt-1 w-full px-4 py-2.5 border border-ink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 text-base">
+                </div>
+                <div>
+                  <label class="text-sm font-medium text-ink-700">Пароль</label>
+                  <input type="password" x-model="loginForm.password" required class="mt-1 w-full px-4 py-2.5 border border-ink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 text-base">
+                </div>
+                <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white py-3 rounded-lg font-medium transition shadow-soft">Войти</button>
+              </form>
+              <p class="text-sm text-center mt-6 text-ink-500">Нет аккаунта? <a href="#" @click.prevent="go('register')" class="text-brand-600 hover:underline font-medium">Создать</a></p>
+            </div>
+          </template>
+          <template x-if="page==='register'">
+            <div>
+              <h2 class="text-2xl font-semibold text-ink-900">Регистрация</h2>
+              <p class="text-ink-500 mt-1">Создайте аккаунт для участия в проектах</p>
+              <form @submit.prevent="register()" class="mt-8 space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                  <div><label class="text-sm font-medium text-ink-700">Имя</label><input x-model="registerForm.first_name" required class="mt-1 w-full px-4 py-2.5 border border-ink-200 rounded-lg focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"></div>
+                  <div><label class="text-sm font-medium text-ink-700">Фамилия</label><input x-model="registerForm.last_name" required class="mt-1 w-full px-4 py-2.5 border border-ink-200 rounded-lg focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"></div>
+                </div>
+                <div><label class="text-sm font-medium text-ink-700">Email</label><input type="email" x-model="registerForm.email" required class="mt-1 w-full px-4 py-2.5 border border-ink-200 rounded-lg focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"></div>
+                <div><label class="text-sm font-medium text-ink-700">Пароль</label><input type="password" x-model="registerForm.password" required class="mt-1 w-full px-4 py-2.5 border border-ink-200 rounded-lg focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"></div>
+                <label class="flex items-start gap-2 text-[12px] text-ink-600 leading-snug cursor-pointer">
+                  <input type="checkbox" x-model="acceptPdn" class="mt-0.5 w-4 h-4 accent-brand-600 shrink-0">
+                  <span>Я даю согласие на обработку моих персональных данных в соответствии с Федеральным законом от 27.07.2006 № 152-ФЗ «О персональных данных».</span>
+                </label>
+                <button type="submit" :disabled="!acceptPdn" class="w-full bg-brand-600 hover:bg-brand-700 disabled:bg-ink-300 disabled:cursor-not-allowed text-white py-3 rounded-lg font-medium transition shadow-soft">Создать аккаунт</button>
+              </form>
+              <p class="text-sm text-center mt-6 text-ink-500">Уже зарегистрированы? <a href="#" @click.prevent="go('home')" class="text-brand-600 hover:underline font-medium">Войти</a></p>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>

@@ -1,0 +1,88 @@
+  <div x-show="showProjectForm" x-cloak class="fixed inset-0 bg-ink-900/50 z-40 flex items-center justify-center p-4 backdrop-blur-sm" @click.self="showProjectForm=false">
+    <div class="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-pop">
+      <div class="px-6 py-4 border-b border-ink-200">
+        <h3 class="text-lg font-semibold text-ink-900" x-text="projectDraft.id ? 'Редактирование проекта' : 'Новый проект'"></h3>
+      </div>
+      <form @submit.prevent="saveProject()" class="p-6 space-y-4">
+        <div>
+          <label class="text-sm font-medium text-ink-700">Название</label>
+          <input x-model="projectDraft.title" required class="mt-1 w-full px-3 py-2 border border-ink-200 rounded-lg text-sm">
+        </div>
+        <div>
+          <label class="text-sm font-medium text-ink-700">Категории <span class="text-ink-400 text-[11px] font-normal">(можно выбрать несколько)</span></label>
+          <div class="mt-1 flex flex-wrap gap-1.5">
+            <template x-for="c in categories" :key="c.id">
+              <button type="button" @click="toggleDraftCategory(c.id)" class="text-xs px-3 py-1 rounded-full border transition"
+                      :class="(projectDraft.category_ids || []).includes(c.id) ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-ink-700 border-ink-200 hover:border-brand-400'"
+                      x-text="((projectDraft.category_ids||[]).includes(c.id) ? '✓ ' : '') + c.name"></button>
+            </template>
+          </div>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-ink-700">Краткое описание</label>
+          <textarea x-model="projectDraft.short_description" required rows="2" class="mt-1 w-full px-3 py-2 border border-ink-200 rounded-lg text-sm"></textarea>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-ink-700">Полное описание</label>
+          <textarea x-model="projectDraft.full_description" required rows="4" class="mt-1 w-full px-3 py-2 border border-ink-200 rounded-lg text-sm"></textarea>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-ink-700">🎯 Цели проекта</label>
+          <textarea x-model="projectDraft.goal_description" rows="2" placeholder="Что должно быть достигнуто?" class="mt-1 w-full px-3 py-2 border border-ink-200 rounded-lg text-sm"></textarea>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-ink-700">📅 Плановое окончание</label>
+          <input type="date" x-model="projectDraft.planned_end_date" class="mt-1 w-full px-3 py-2 border border-ink-200 rounded-lg text-sm">
+        </div>
+        <div>
+          <label class="text-sm font-medium text-ink-700">Обложка проекта</label>
+          <div class="mt-1 flex gap-2">
+            <input type="text" x-model="projectDraft.image_url" placeholder="https://... или загрузите файл" class="flex-1 px-3 py-2 border border-ink-200 rounded-lg text-sm">
+            <label class="text-sm px-3 py-2 border border-ink-200 rounded-lg cursor-pointer hover:bg-ink-50 whitespace-nowrap">
+              Загрузить
+              <input type="file" accept="image/*" class="hidden" @change="uploadField($event, 'projectDraft', 'image_url')">
+            </label>
+          </div>
+          <p x-show="projectDraft.image_url" class="text-xs text-emerald-600 mt-1">✓ <span x-text="fileLabel(projectDraft.image_url)"></span></p>
+          <div x-show="projectDraft.image_url" class="mt-2">
+            <img :src="projectDraft.image_url" class="max-h-32 rounded border border-ink-200" alt="">
+          </div>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-ink-700">Темы <span class="text-ink-400 text-[11px] font-normal">(выберите подходящие)</span></label>
+          <input x-model="themeSearch" placeholder="Поиск по теме..." class="mt-1 w-full px-3 py-1.5 border border-ink-200 rounded-lg text-[13px]">
+          <div class="mt-2 flex flex-wrap gap-1 max-h-48 overflow-y-auto p-2 border border-ink-100 rounded-lg bg-ink-50/50 scrollbar-thin">
+            <template x-for="t in filteredCatalog()" :key="t.id">
+              <button type="button" @click="toggleDraftTag(t.name)" class="text-[11px] px-2 py-0.5 rounded-full border transition"
+                      :class="projectDraft.tags.includes(t.name) ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-ink-600 border-ink-200 hover:border-brand-400'"
+                      x-text="(projectDraft.tags.includes(t.name) ? '✓ ' : '') + t.name"></button>
+            </template>
+            <p x-show="!filteredCatalog().length" class="text-xs text-ink-400 italic w-full text-center py-2">Темы не найдены</p>
+          </div>
+          <div x-show="projectDraft.tags.length" class="mt-2 text-[11px] text-ink-500">Выбрано: <span class="font-medium text-ink-700" x-text="projectDraft.tags.length"></span></div>
+        </div>
+        <div x-show="projectDraft.id">
+          <label class="text-sm font-medium text-ink-700">Требуемые навыки <span class="text-ink-400 text-[11px] font-normal">(выберите из каталога)</span></label>
+          <div class="mt-1 flex flex-wrap gap-1.5">
+            <template x-for="s in requiredSkills" :key="s">
+              <span class="inline-flex items-center gap-1 text-xs px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded font-medium">
+                <span x-text="s"></span>
+                <button type="button" @click="deleteRequiredSkill(s)" class="text-amber-700 hover:text-rose-600">×</button>
+              </span>
+            </template>
+            <p x-show="!requiredSkills.length" class="text-xs text-ink-400 italic">пока не выбраны</p>
+          </div>
+          <input x-model="requiredSkillSearch" placeholder="Поиск навыка..." class="mt-2 w-full px-3 py-1.5 border border-ink-200 rounded-lg text-[13px]">
+          <div class="mt-1.5 flex flex-wrap gap-1 max-h-32 overflow-y-auto p-2 border border-ink-100 rounded-lg bg-ink-50/50 scrollbar-thin">
+            <template x-for="t in filteredRequiredSkillCatalog()" :key="t.id">
+              <button type="button" @click="addRequiredSkillFromCatalog(t.name)" class="text-[11px] px-2 py-0.5 rounded-full border bg-white text-ink-600 border-ink-200 hover:bg-amber-50 hover:border-amber-400 hover:text-amber-800" x-text="t.name"></button>
+            </template>
+            <p x-show="!filteredRequiredSkillCatalog().length" class="text-xs text-ink-400 italic w-full text-center py-2">Все навыки уже добавлены</p>
+          </div>
+        </div>
+        <div class="flex gap-2 pt-2">
+          <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white text-sm px-5 py-2 rounded-lg font-medium">Сохранить</button>
+          <button type="button" @click="showProjectForm=false" class="text-sm px-5 py-2 text-ink-600 hover:bg-ink-100 rounded-lg">Отмена</button>
+        </div>
+      </form>
+    </div>

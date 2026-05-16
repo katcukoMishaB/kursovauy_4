@@ -4,55 +4,57 @@ import (
 	"kursovauy_4/internal/auth"
 	"net/http"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
-func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		authHeader := r.Header.Get("Authorization")
+func AuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			http.Error(w, "Authorization header required", http.StatusUnauthorized)
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Требуется авторизация"})
 			return
 		}
 
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			http.Error(w, "Invalid authorization header", http.StatusUnauthorized)
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Некорректный заголовок авторизации"})
 			return
 		}
 
-		token := parts[1]
-		claims, err := auth.ValidateToken(token)
+		claims, err := auth.ValidateToken(parts[1])
 		if err != nil {
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Недействительный токен"})
 			return
 		}
 
-		r.Header.Set("X-User-ID", claims.UserID)
-		r.Header.Set("X-User-Email", claims.Email)
-		r.Header.Set("X-User-Role", claims.Role)
-
-		next(w, r)
+		c.Request.Header.Set("X-User-ID", claims.UserID)
+		c.Request.Header.Set("X-User-Email", claims.Email)
+		c.Request.Header.Set("X-User-Role", claims.Role)
+		c.Set("userID", claims.UserID)
+		c.Set("userEmail", claims.Email)
+		c.Set("userRole", claims.Role)
+		c.Next()
 	}
 }
 
-func AdminMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		role := r.Header.Get("X-User-Role")
-		if role != "admin" {
-			http.Error(w, "Admin access required", http.StatusForbidden)
-			return
+func RequireRole(allowed ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role := c.GetHeader("X-User-Role")
+		for _, r := range allowed {
+			if r == role {
+				c.Next()
+				return
+			}
 		}
-		next(w, r)
-	})
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Недостаточно прав"})
+	}
 }
 
-func OrganizerMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		role := r.Header.Get("X-User-Role")
-		if role != "admin" && role != "organizer" {
-			http.Error(w, "Organizer access required", http.StatusForbidden)
-			return
-		}
-		next(w, r)
-	})
+func AdminMiddleware() gin.HandlerFunc {
+	return RequireRole("admin")
+}
+
+func OrganizerMiddleware() gin.HandlerFunc {
+	return RequireRole("admin", "organizer")
 }

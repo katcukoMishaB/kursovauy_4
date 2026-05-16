@@ -1,0 +1,35 @@
+        <section x-show="page==='notifications'" x-cloak class="p-8 max-w-4xl mx-auto">
+          <div class="flex items-baseline justify-between mb-5">
+            <h2 class="text-2xl font-semibold text-ink-900">Уведомления</h2>
+            <button @click="loadInvitations()" class="text-xs px-3 py-1.5 border border-ink-200 rounded-lg hover:bg-ink-50 text-ink-700">Обновить</button>
+          </div>
+
+          <p x-show="!invitations.length" class="text-ink-400 text-sm italic py-12 text-center bg-white rounded-xl border border-ink-200">Новых приглашений нет</p>
+
+          <div class="space-y-3">
+            <template x-for="inv in invitations" :key="inv.id">
+              <div class="bg-white border border-ink-200 rounded-xl p-5 shadow-soft">
+                <div class="flex items-start gap-4">
+                  <img x-show="inv.project_image_url" :src="inv.project_image_url" class="w-14 h-14 rounded-lg object-cover shrink-0">
+                  <div class="w-14 h-14 rounded-lg bg-brand-100 text-brand-700 flex items-center justify-center text-base font-semibold shrink-0 uppercase" x-show="!inv.project_image_url" x-text="((inv.project_title||'?')[0]+'').toUpperCase()"></div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-start gap-2 mb-1">
+                      <div class="font-semibold text-ink-900" x-text="'Приглашение в проект: ' + inv.project_title"></div>
+                      <span class="text-[11px] px-1.5 py-0.5 rounded font-medium" :class="invStatusClass(inv.status)" x-text="invStatusLabel(inv.status)"></span>
+                    </div>
+                    <div class="text-[12px] text-ink-500 mb-2">
+                      От: <span x-text="(inv.sender_first_name||'') + ' ' + (inv.sender_last_name||'')"></span>
+                      <span x-show="inv.group_name"> · Группа: <span x-text="inv.group_name"></span></span>
+                      · <span x-text="formatDate(inv.created_at)"></span>
+                    </div>
+                    <div x-show="inv.message" class="text-[13px] text-ink-700 bg-ink-50 rounded-lg p-2 mb-3 italic" x-text="inv.message"></div>
+                    <div class="flex gap-2">
+                      <button @click="acceptInvitation(inv)" class="text-xs px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium">Принять и перейти к проекту</button>
+                      <button @click="rejectInvitation(inv)" class="text-xs px-4 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-lg font-medium">Отклонить</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </section>

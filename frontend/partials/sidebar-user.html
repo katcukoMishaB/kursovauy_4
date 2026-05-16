@@ -1,0 +1,35 @@
+      <aside x-show="role !== 'admin'" class="w-60 shrink-0 bg-white border-r border-ink-200 flex flex-col h-screen sticky top-0">
+        <div class="px-3 py-3 border-b border-ink-200">
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-8 h-8 rounded-md bg-brand-600 text-white flex items-center justify-center font-bold text-sm">К</div>
+            <div class="font-semibold text-ink-900 tracking-tight text-[14px] leading-tight">Краудсорсинговые<br><span class="text-[11px] text-ink-400 font-normal">проекты</span></div>
+          </div>
+          <button @click="go('profile'); loadProfile()" class="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg transition border" :class="page==='profile' ? 'bg-brand-50 border-brand-200' : 'border-ink-200 hover:bg-ink-50'">
+            <div class="w-9 h-9 rounded-full bg-brand-600 text-white flex items-center justify-center text-sm font-semibold shrink-0" x-text="(user.first_name || '?')[0]?.toUpperCase()"></div>
+            <div class="text-left min-w-0 flex-1">
+              <div class="text-[13px] font-semibold text-ink-900 truncate" x-text="(user.first_name||'') + ' ' + (user.last_name||'')"></div>
+              <div class="text-[11px] text-ink-500" x-text="roleLabel(role)"></div>
+            </div>
+          </button>
+        </div>
+        <nav class="flex-1 px-2 py-3 space-y-1 text-[14px]">
+          <button @click="go('projects')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition" :class="page==='projects' || page==='project-detail' ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-ink-700 hover:bg-ink-100'">
+            <span class="text-base">🗂️</span><span>Проекты</span>
+          </button>
+          <button @click="go('my-projects')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition" :class="page==='my-projects' ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-ink-700 hover:bg-ink-100'">
+            <span class="text-base">⭐</span><span>Мои проекты</span>
+          </button>
+          <button @click="go('chats')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition" :class="page==='chats' ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-ink-700 hover:bg-ink-100'">
+            <span class="text-base">💬</span><span>Чаты</span>
+          </button>
+          <button @click="go('notifications')" class="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg transition" :class="page==='notifications' ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-ink-700 hover:bg-ink-100'">
+            <span class="flex items-center gap-3"><span class="text-base">🔔</span><span>Уведомления</span></span>
+            <span x-show="invitationsCount > 0" class="text-[11px] px-1.5 py-0.5 bg-rose-500 text-white rounded-full font-bold min-w-[20px] text-center" x-text="invitationsCount"></span>
+          </button>
+        </nav>
+        <div class="border-t border-ink-200 p-2">
+          <button @click="logout()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] text-ink-500 hover:bg-rose-50 hover:text-rose-600 transition">
+            <span>↪</span><span>Выйти</span>
+          </button>
+        </div>
+      </aside>

@@ -1,0 +1,130 @@
+  <div x-show="selectedTask" x-cloak class="fixed inset-0 bg-ink-900/50 z-40 flex items-center justify-center p-4 backdrop-blur-sm" @click.self="closeTask()">
+    <div class="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-pop" x-show="selectedTask">
+      <template x-if="selectedTask">
+        <div>
+          <div class="px-6 py-4 border-b border-ink-200 flex items-start gap-3">
+            <span class="px-2 py-0.5 rounded font-bold tracking-wider mt-1 text-xs" :class="priorityBadge(selectedTask.priority)" x-text="priorityIcon(selectedTask.priority)"></span>
+            <div class="flex-1 min-w-0">
+              <h3 class="text-lg font-semibold text-ink-900" x-text="selectedTask.title"></h3>
+              <div class="mt-1 flex flex-wrap gap-2 items-center text-xs">
+                <span class="px-2 py-0.5 rounded font-medium" :class="statusColor(selectedTask.status)" x-text="selectedTask.status"></span>
+                <span x-show="selectedTask.due_date" :class="selectedTask.overdue ? 'text-rose-600 font-medium' : 'text-ink-500'">До <span x-text="formatDate(selectedTask.due_date)"></span></span>
+                <span class="text-ink-500">Сложность:
+                  <template x-for="i in 5"><span :class="i <= selectedTask.difficulty ? 'text-brand-500' : 'text-ink-200'">●</span></template>
+                </span>
+              </div>
+            </div>
+            <div class="flex gap-1">
+              <button x-show="canManage" @click="openEditTask(selectedTask); closeTask()" class="text-xs px-3 py-1.5 border border-ink-200 rounded hover:bg-ink-50">✎</button>
+              <button @click="closeTask()" class="text-xs px-3 py-1.5 text-ink-500 hover:bg-ink-100 rounded">✕</button>
+            </div>
+          </div>
+          <div class="p-6 space-y-5">
+            <div x-show="selectedTask.description">
+              <h4 class="text-xs font-semibold text-ink-500 uppercase tracking-wide mb-1">Описание</h4>
+              <p class="text-sm text-ink-700 whitespace-pre-wrap leading-relaxed" x-text="selectedTask.description"></p>
+            </div>
+
+            <div>
+              <h4 class="text-xs font-semibold text-ink-500 uppercase tracking-wide mb-1">Вложение</h4>
+              <div x-show="selectedTask.attachment_url" class="flex items-center gap-2 mb-2">
+                <a :href="selectedTask.attachment_url" target="_blank" class="inline-flex items-center gap-2 text-sm text-brand-700 hover:underline break-all">
+                  <span class="px-2 py-1 bg-brand-50 border border-brand-200 rounded">📎</span>
+                  <span x-text="fileLabel(selectedTask.attachment_url)"></span>
+                </a>
+                <button x-show="canEditAttachment()" @click="clearTaskAttachment()" class="text-xs text-rose-600 hover:bg-rose-50 px-2 py-1 rounded">Удалить</button>
+              </div>
+              <div x-show="canEditAttachment()" class="flex gap-2 items-center">
+                <input type="text" x-model="selectedTask.attachment_url" placeholder="https://... или загрузите файл" class="flex-1 px-3 py-1.5 border border-ink-200 rounded-lg text-sm">
+                <button @click="saveTaskAttachmentUrl()" class="text-xs px-3 py-1.5 border border-ink-200 rounded hover:bg-ink-50">Сохранить</button>
+                <label class="text-xs px-3 py-1.5 border border-brand-200 bg-brand-50 text-brand-700 rounded cursor-pointer hover:bg-brand-100 whitespace-nowrap font-medium">
+                  📎 Загрузить
+                  <input type="file" class="hidden" @change="uploadTaskAttachment($event)">
+                </label>
+              </div>
+              <p x-show="!selectedTask.attachment_url && !canEditAttachment()" class="text-xs text-ink-400 italic">нет вложений</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <h4 class="text-xs font-semibold text-ink-500 uppercase tracking-wide mb-1">Главный исполнитель</h4>
+                <template x-if="canManage">
+                  <select @change="assignTask(selectedTask, $event.target.value || null)" class="w-full text-sm border border-ink-200 rounded px-2 py-1.5">
+                    <option value="" :selected="!selectedTask.assigned_to">не назначен</option>
+                    <template x-for="p in participants">
+                      <option :value="p.user_id" :selected="p.user_id === selectedTask.assigned_to" x-text="(p.first_name||'') + ' ' + (p.last_name||'')"></option>
+                    </template>
+                  </select>
+                </template>
+                <template x-if="!canManage">
+                  <div class="text-sm text-ink-800" x-text="selectedTask.assigned_to ? participantName(selectedTask.assigned_to) : 'не назначен'"></div>
+                </template>
+              </div>
+              <div>
+                <h4 class="text-xs font-semibold text-ink-500 uppercase tracking-wide mb-1">Статус</h4>
+                <div class="flex gap-1">
+                  <template x-for="s in ['новая','в работе','завершена']">
+                    <button @click="setTaskStatus(selectedTask, s)" class="text-xs px-2 py-1 rounded border"
+                            :class="selectedTask.status === s ? 'border-brand-600 bg-brand-50 text-brand-700 font-medium' : 'border-ink-200 hover:bg-ink-50 text-ink-600'"
+                            x-text="s"></button>
+                  </template>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 class="text-xs font-semibold text-ink-500 uppercase tracking-wide mb-1">Дополнительные исполнители</h4>
+              <div class="flex flex-wrap gap-1 mb-2">
+                <template x-for="uid in (taskAssignees || [])" :key="uid">
+                  <span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-brand-50 text-brand-700 rounded">
+                    <span x-text="participantName(uid)"></span>
+                    <button x-show="canManage" @click="removeTaskAssignee(uid)" class="text-brand-700 hover:text-rose-600">×</button>
+                  </span>
+                </template>
+                <span x-show="!(taskAssignees||[]).length" class="text-xs text-ink-400 italic">нет</span>
+              </div>
+              <select x-show="canManage && availableAssignees().length" @change="addTaskAssignee($event.target.value); $event.target.value = ''" class="text-xs border border-ink-200 rounded px-2 py-1">
+                <option value="">+ добавить исполнителя</option>
+                <template x-for="p in availableAssignees()" :key="p.user_id">
+                  <option :value="p.user_id" x-text="(p.first_name||'') + ' ' + (p.last_name||'')"></option>
+                </template>
+              </select>
+            </div>
+
+            <div x-show="selectedTask.status === 'завершена'">
+              <h4 class="text-xs font-semibold text-ink-500 uppercase tracking-wide mb-2">Оценка качества выполнения</h4>
+              <div x-show="!canManage && selectedTask.quality_rating" class="text-2xl text-amber-500">
+                <template x-for="i in selectedTask.quality_rating"><span>★</span></template>
+                <template x-for="i in (5 - selectedTask.quality_rating)"><span class="text-ink-200">★</span></template>
+              </div>
+              <div x-show="!canManage && !selectedTask.quality_rating" class="text-sm text-ink-400 italic">пока не оценено</div>
+              <div x-show="canManage" class="flex items-center gap-3">
+                <div class="flex">
+                  <template x-for="i in 5">
+                    <button @click="rateDraft = i" class="text-2xl transition" :class="i <= rateDraft ? 'text-amber-500' : 'text-ink-200 hover:text-amber-300'">★</button>
+                  </template>
+                </div>
+                <button @click="rateTask(selectedTask)" class="text-xs px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded font-medium">Сохранить оценку</button>
+              </div>
+            </div>
+
+            <div>
+              <h4 class="text-xs font-semibold text-ink-500 uppercase tracking-wide mb-2">Комментарии (<span x-text="taskComments.length"></span>)</h4>
+              <div class="space-y-2 max-h-64 overflow-y-auto scrollbar-thin">
+                <template x-for="c in taskComments" :key="c.id">
+                  <div class="bg-ink-50 rounded-lg p-3 text-sm">
+                    <div class="text-xs text-ink-500" x-text="formatDate(c.publication_date) + ' · ' + participantName(c.user_id)"></div>
+                    <div class="mt-1 text-ink-800" x-text="c.content"></div>
+                  </div>
+                </template>
+                <p x-show="!taskComments.length" class="text-center text-ink-400 text-xs py-3">Комментариев нет</p>
+              </div>
+              <div class="mt-2 flex gap-2">
+                <input x-model="newComment" placeholder="Добавить комментарий..." class="flex-1 px-3 py-2 border border-ink-200 rounded-lg text-sm" @keydown.enter.prevent="addComment()">
+                <button @click="addComment()" class="bg-brand-600 hover:bg-brand-700 text-white text-sm px-4 rounded-lg font-medium">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>

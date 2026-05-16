@@ -10,6 +10,7 @@ import (
 type ChatHandler struct {
 	service  *ChatService
 	upgrader websocket.Upgrader
+	hub      *Hub
 }
 
 func NewChatHandler(service *ChatService) *ChatHandler {
@@ -20,6 +21,7 @@ func NewChatHandler(service *ChatService) *ChatHandler {
 				return true
 			},
 		},
+		hub: NewHub(),
 	}
 }
 
@@ -29,22 +31,22 @@ func (h *ChatHandler) CreateChat(c *gin.Context) {
 		Name string `json:"name"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Некорректные данные формы"})
 		return
 	}
 	chatID, err := h.service.CreateChat(projectID, req.Name)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create chat"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось создать чат"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"id": chatID, "message": "Chat created successfully"})
+	c.JSON(http.StatusOK, gin.H{"id": chatID, "message": "Чат создан"})
 }
 
 func (h *ChatHandler) GetChats(c *gin.Context) {
 	projectID := c.Param("project_id")
 	chats, err := h.service.GetChats(projectID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch chats"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось загрузить чаты"})
 		return
 	}
 	if chats == nil {
@@ -57,7 +59,7 @@ func (h *ChatHandler) GetMessages(c *gin.Context) {
 	chatID := c.Param("id")
 	messages, err := h.service.GetMessages(chatID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch messages"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось загрузить сообщения"})
 		return
 	}
 	if messages == nil {
@@ -73,15 +75,16 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 		MessageText string `json:"message_text"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Некорректные данные формы"})
 		return
 	}
 	message, err := h.service.SendMessage(chatID, userID, req.MessageText)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send message"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось отправить сообщение"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"id": message.ID, "message": "Message sent successfully"})
+	h.hub.Broadcast(chatID, message)
+	c.JSON(http.StatusOK, gin.H{"id": message.ID, "message": "Сообщение отправлено"})
 }
 
 func (h *ChatHandler) HandleWebSocket(c *gin.Context) {
@@ -91,6 +94,9 @@ func (h *ChatHandler) HandleWebSocket(c *gin.Context) {
 		return
 	}
 	defer conn.Close()
+
+	h.hub.Join(chatID, conn)
+	defer h.hub.Leave(chatID, conn)
 
 	for {
 		var msg struct {
@@ -104,8 +110,6 @@ func (h *ChatHandler) HandleWebSocket(c *gin.Context) {
 		if err != nil {
 			continue
 		}
-		if err := conn.WriteJSON(saved); err != nil {
-			break
-		}
+		h.hub.Broadcast(chatID, saved)
 	}
 }

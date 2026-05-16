@@ -1,48 +1,66 @@
 package main
 
 import (
-	"database/sql"
-	"encoding/json"
 	"kursovauy_4/internal/database"
 	"kursovauy_4/internal/middleware"
 	"log"
-	"net/http"
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/mux"
 )
-
-var db *sql.DB
-
-func sendJSONError(w http.ResponseWriter, message string, statusCode int) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(map[string]string{"error": message})
-}
 
 func main() {
 	gormDB, err := database.ConnectGORM()
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
-	db, err = gormDB.DB()
-	if err != nil {
-		log.Fatal("Failed to get sql db:", err)
+	if sqlDB, err := gormDB.DB(); err == nil {
+		defer sqlDB.Close()
 	}
-	defer db.Close()
+
+	repo := NewUserRepository(gormDB)
+	service := NewUserService(repo)
+	handler := NewUserHandler(service)
 
 	r := gin.Default()
-	r.POST("/register", adapt(registerHandler))
-	r.POST("/login", adapt(loginHandler))
-	r.GET("/profile", adapt(middleware.AuthMiddleware(getProfileHandler)))
-	r.PUT("/profile", adapt(middleware.AuthMiddleware(updateProfileHandler)))
-	r.POST("/organizer-request", adapt(middleware.AuthMiddleware(createOrganizerRequestHandler)))
-	r.GET("/organizer-requests", adapt(middleware.AdminMiddleware(getOrganizerRequestsHandler)))
-	r.POST("/organizer-requests/:id/approve", adaptWithParams(middleware.AdminMiddleware(approveOrganizerRequestHandler), "id"))
-	r.POST("/organizer-requests/:id/reject", adaptWithParams(middleware.AdminMiddleware(rejectOrganizerRequestHandler), "id"))
-	r.GET("/users", adapt(middleware.AdminMiddleware(getUsersHandler)))
-	r.PUT("/users/:id", adaptWithParams(middleware.AdminMiddleware(updateUserStatusHandler), "id"))
+	r.POST("/register", handler.Register)
+	r.POST("/login", handler.Login)
+	r.GET("/groups", handler.PublicListGroups)
+
+	auth := r.Group("/")
+	auth.Use(middleware.AuthMiddleware())
+	{
+		auth.GET("/profile", handler.GetProfile)
+		auth.PUT("/profile", handler.UpdateProfile)
+		auth.POST("/organizer-request", handler.CreateOrganizerRequest)
+		auth.GET("/my-request", handler.GetMyRequest)
+		auth.GET("/skills", handler.ListSkills)
+		auth.POST("/skills", handler.AddSkill)
+		auth.DELETE("/skills/:name", handler.DeleteSkill)
+		auth.GET("/interests", handler.ListInterests)
+		auth.POST("/interests", handler.AddInterest)
+		auth.DELETE("/interests/:categoryId", handler.DeleteInterest)
+	}
+
+	admin := r.Group("/")
+	admin.Use(middleware.AuthMiddleware(), middleware.AdminMiddleware())
+	{
+		admin.GET("/organizer-requests", handler.ListOrganizerRequests)
+		admin.POST("/organizer-requests/:id/approve", handler.ApproveOrganizerRequest)
+		admin.POST("/organizer-requests/:id/reject", handler.RejectOrganizerRequest)
+		admin.GET("/users", handler.ListUsers)
+		admin.PUT("/users/:id", handler.UpdateUserStatus)
+
+		admin.GET("/admin/users", handler.AdminListUsers)
+		admin.POST("/admin/users", handler.AdminCreateUser)
+		admin.PUT("/admin/users/:id", handler.AdminUpdateUser)
+		admin.DELETE("/admin/users/:id", handler.AdminDeleteUser)
+		admin.GET("/admin/dashboard", handler.AdminDashboard)
+
+		admin.POST("/admin/groups", handler.AdminCreateGroup)
+		admin.PUT("/admin/groups/:id", handler.AdminUpdateGroup)
+		admin.DELETE("/admin/groups/:id", handler.AdminDeleteGroup)
+	}
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -50,22 +68,5 @@ func main() {
 	}
 
 	log.Printf("User service starting on port %s", port)
-	log.Fatal(http.ListenAndServe(":"+port, r))
-}
-
-func adapt(handler http.HandlerFunc) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		handler(c.Writer, c.Request)
-	}
-}
-
-func adaptWithParams(handler http.HandlerFunc, params ...string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		vars := map[string]string{}
-		for _, param := range params {
-			vars[param] = c.Param(param)
-		}
-		req := mux.SetURLVars(c.Request, vars)
-		handler(c.Writer, req)
-	}
+	log.Fatal(r.Run(":" + port))
 }

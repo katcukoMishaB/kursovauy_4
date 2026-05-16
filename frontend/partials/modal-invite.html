@@ -1,0 +1,72 @@
+    <div x-show="showInviteForm" x-cloak class="fixed inset-0 bg-ink-900/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
+        <div class="p-5 border-b border-ink-200 flex items-center justify-between">
+          <h3 class="font-semibold text-lg text-ink-900">Пригласить в проект</h3>
+          <button @click="showInviteForm=false" class="text-ink-400 hover:text-ink-700 text-2xl leading-none">×</button>
+        </div>
+        <form @submit.prevent="submitInvitations()" class="p-5 space-y-4">
+          <div>
+            <label class="text-xs font-medium text-ink-700 block mb-2">Кого приглашаем</label>
+            <div class="inline-flex rounded-lg border border-ink-200 overflow-hidden text-sm">
+              <button type="button" @click="setInviteMode('email')"
+                      :class="inviteDraft.mode === 'email' ? 'bg-brand-600 text-white' : 'bg-white text-ink-700 hover:bg-ink-50'"
+                      class="px-4 py-2 font-medium transition">
+                По email
+              </button>
+              <button type="button" @click="setInviteMode('group')"
+                      :class="inviteDraft.mode === 'group' ? 'bg-brand-600 text-white' : 'bg-white text-ink-700 hover:bg-ink-50'"
+                      class="px-4 py-2 font-medium transition border-l border-ink-200">
+                По учебной группе
+              </button>
+            </div>
+          </div>
+
+          <div x-show="inviteDraft.mode === 'email'">
+            <label class="text-xs font-medium text-ink-700 block mb-1">Список email (Enter добавляет)</label>
+            <div class="flex gap-2 mb-2">
+              <input x-model="inviteDraft.emailInput" @keydown.enter.prevent="addInviteEmail()"
+                     placeholder="user@example.com"
+                     class="flex-1 px-3 py-2 border border-ink-200 rounded-lg text-sm">
+              <button type="button" @click="addInviteEmail()" class="px-3 py-2 text-sm bg-ink-100 hover:bg-ink-200 rounded-lg text-ink-700 font-medium">+ Добавить</button>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              <template x-for="em in inviteDraft.emails" :key="em">
+                <span class="inline-flex items-center gap-1 text-xs px-2 py-1 bg-brand-50 text-brand-700 rounded-full font-medium">
+                  <span x-text="em"></span>
+                  <button type="button" @click="removeInviteEmail(em)" class="text-brand-700 hover:text-rose-600">×</button>
+                </span>
+              </template>
+              <p x-show="!inviteDraft.emails.length" class="text-xs text-ink-400 italic">Список пуст</p>
+            </div>
+          </div>
+
+          <div x-show="inviteDraft.mode === 'group'">
+            <label class="text-xs font-medium text-ink-700 block mb-1">Учебные группы</label>
+            <input x-model="inviteDraft.groupSearch" placeholder="Поиск группы..."
+                   class="w-full px-3 py-1.5 border border-ink-200 rounded-lg text-[13px] mb-2">
+            <div class="flex flex-wrap gap-1.5 max-h-44 overflow-y-auto p-2 border border-ink-100 rounded-lg bg-ink-50/50 scrollbar-thin">
+              <template x-for="g in filteredGroupsForInvite()" :key="g.id">
+                <button type="button" @click="toggleInviteGroup(g.id)"
+                        class="text-[12px] px-3 py-1 rounded-full border transition"
+                        :class="inviteDraft.group_ids.includes(g.id) ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-ink-700 border-ink-200 hover:border-brand-400 hover:text-brand-700'">
+                  <span x-text="g.name"></span>
+                </button>
+              </template>
+              <p x-show="!filteredGroupsForInvite().length" class="text-xs text-ink-400 italic w-full text-center py-2">Группы не найдены</p>
+            </div>
+            <p class="text-[11px] text-ink-500 mt-1">Все участники выбранной группы получат приглашение в виде уведомления.</p>
+          </div>
+
+          <div>
+            <label class="text-xs font-medium text-ink-700 block mb-1">Сообщение (необязательно)</label>
+            <textarea x-model="inviteDraft.message" rows="3" placeholder="Краткое сообщение приглашённым"
+                      class="w-full px-3 py-2 border border-ink-200 rounded-lg text-sm"></textarea>
+          </div>
+
+          <div class="flex gap-2 pt-2 border-t border-ink-200">
+            <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white text-sm px-4 py-2 rounded-lg font-medium">Отправить приглашения</button>
+            <button type="button" @click="showInviteForm=false" class="text-sm px-4 py-2 text-ink-600 hover:bg-ink-100 rounded-lg">Отмена</button>
+          </div>
+        </form>
+      </div>
+    </div>

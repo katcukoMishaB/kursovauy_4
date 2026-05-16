@@ -1,21 +1,18 @@
-// Главный файл приложения - инициализация всех модулей
-
-function init() {
-    // Загружаем настройки доступности
-    window.Accessibility.loadAccessibilitySettings();
-    window.Accessibility.applyAccessibilitySettings();
-    
-    // Проверяем авторизацию
-    window.Auth.checkAuth();
-    
-    // Загружаем категории проектов
-    window.Projects.loadCategories();
+function app() {
+  const modules = {
+    AppState: window.AppState ? window.AppState() : null,
+    AuthModule: window.AuthModule,
+    ProjectsModule: window.ProjectsModule,
+    TasksModule: window.TasksModule,
+    ChatModule: window.ChatModule,
+    ProfileModule: window.ProfileModule,
+    AdminModule: window.AdminModule,
+    RouterModule: window.RouterModule,
+    InvitationsModule: window.InvitationsModule,
+  };
+  for (const [k, v] of Object.entries(modules)) {
+    if (!v) console.error('[app] module missing:', k);
+  }
+  return Object.assign({}, ...Object.values(modules).filter(Boolean));
 }
-
-// Инициализация при загрузке страницы
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-} else {
-    init();
-}
-
+window.app = app;

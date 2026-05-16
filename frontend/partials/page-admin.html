@@ -1,0 +1,503 @@
+        <section x-show="page==='admin'" x-cloak class="px-6 py-5">
+
+          <div x-show="adminTab==='dashboard'">
+            <h1 class="text-2xl font-semibold text-ink-900 tracking-tight">Дашборд</h1>
+            <p class="text-sm text-ink-500 mb-6">Сводная статистика по системе</p>
+            <div x-show="dashboard" class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+              <div class="bg-white border border-ink-200 rounded-xl p-5 shadow-soft">
+                <div class="text-xs text-ink-500 uppercase tracking-wide">Всего пользователей</div>
+                <div class="text-3xl font-semibold text-ink-900 mt-1" x-text="dashboard?.total_users || 0"></div>
+                <div class="text-xs text-emerald-600 mt-1">+<span x-text="dashboard?.new_users_week || 0"></span> за неделю</div>
+              </div>
+              <div class="bg-white border border-ink-200 rounded-xl p-5 shadow-soft">
+                <div class="text-xs text-ink-500 uppercase tracking-wide">Активные / заблок.</div>
+                <div class="text-3xl font-semibold text-ink-900 mt-1"><span x-text="dashboard?.active_users || 0"></span> <span class="text-ink-300 text-2xl">/</span> <span class="text-rose-500 text-2xl" x-text="dashboard?.blocked_users || 0"></span></div>
+                <div class="text-xs text-ink-500 mt-1">Из них организаторов: <span x-text="dashboard?.organizers || 0"></span></div>
+              </div>
+              <div class="bg-white border border-ink-200 rounded-xl p-5 shadow-soft">
+                <div class="text-xs text-ink-500 uppercase tracking-wide">Всего проектов</div>
+                <div class="text-3xl font-semibold text-ink-900 mt-1" x-text="dashboard?.total_projects || 0"></div>
+                <div class="text-xs text-ink-500 mt-1">
+                  <span class="text-emerald-600" x-text="dashboard?.active_projects + ' акт.'"></span> ·
+                  <span x-text="dashboard?.archived_projects + ' арх.'"></span> ·
+                  <span x-text="dashboard?.completed_projects + ' завершено'"></span>
+                </div>
+              </div>
+              <div class="bg-white border border-ink-200 rounded-xl p-5 shadow-soft">
+                <div class="text-xs text-ink-500 uppercase tracking-wide">Задачи (выполнено / всего)</div>
+                <div class="text-3xl font-semibold text-ink-900 mt-1"><span class="text-emerald-600" x-text="dashboard?.completed_tasks || 0"></span> <span class="text-ink-300">/</span> <span x-text="dashboard?.total_tasks || 0"></span></div>
+                <div class="text-xs mt-1"><span class="text-rose-600 font-medium" x-text="(dashboard?.overdue_tasks || 0) + ' просрочено'"></span></div>
+              </div>
+            </div>
+            <div x-show="dashboard" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div class="bg-white border border-ink-200 rounded-xl p-5 shadow-soft">
+                <div class="text-xs text-ink-500 uppercase tracking-wide">Заявок ждут рассмотрения</div>
+                <div class="text-3xl font-semibold mt-1" :class="dashboard?.pending_requests ? 'text-amber-500' : 'text-ink-900'" x-text="dashboard?.pending_requests || 0"></div>
+                <button x-show="dashboard?.pending_requests" @click="setAdminTab('requests')" class="mt-2 text-xs text-brand-600 hover:underline">Перейти →</button>
+              </div>
+              <div class="bg-white border border-ink-200 rounded-xl p-5 shadow-soft">
+                <div class="text-xs text-ink-500 uppercase tracking-wide">Задач завершено за неделю</div>
+                <div class="text-3xl font-semibold text-ink-900 mt-1" x-text="dashboard?.tasks_done_week || 0"></div>
+              </div>
+              <div class="bg-white border border-ink-200 rounded-xl p-5 shadow-soft">
+                <div class="text-xs text-ink-500 uppercase tracking-wide">Среднее качество выполнения</div>
+                <div class="mt-1 flex items-center gap-2">
+                  <div class="text-3xl font-semibold text-amber-500" x-text="(dashboard?.avg_quality || 0).toFixed(1)"></div>
+                  <div class="text-amber-500 text-lg">
+                    <template x-for="i in 5"><span :class="i <= Math.round(dashboard?.avg_quality || 0) ? '' : 'text-ink-200'">★</span></template>
+                  </div>
+                </div>
+                <div class="text-xs text-ink-500 mt-1">Оценки руководителей по завершённым задачам</div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mt-5">
+              <div class="bg-white border border-ink-200 rounded-xl p-5 shadow-soft lg:col-span-2">
+                <div class="flex items-center justify-between mb-3">
+                  <div>
+                    <div class="font-semibold text-ink-900">Динамика задач</div>
+                    <div class="text-xs text-ink-500">За последние 30 дней</div>
+                  </div>
+                </div>
+                <div class="h-64"><canvas id="chart-tasks"></canvas></div>
+              </div>
+              <div class="bg-white border border-ink-200 rounded-xl p-5 shadow-soft">
+                <div class="font-semibold text-ink-900">Проекты по статусам</div>
+                <div class="text-xs text-ink-500 mb-3">Текущее распределение</div>
+                <div class="h-64"><canvas id="chart-project-status"></canvas></div>
+              </div>
+            </div>
+            <div class="bg-white border border-ink-200 rounded-xl p-5 shadow-soft mt-3">
+              <div class="font-semibold text-ink-900">Топ-5 активных пользователей</div>
+              <div class="text-xs text-ink-500 mb-3">По количеству выполненных задач и общей активности</div>
+              <div class="h-72"><canvas id="chart-top-users"></canvas></div>
+            </div>
+          </div>
+
+          <div x-show="adminTab==='users'">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h1 class="text-2xl font-semibold text-ink-900 tracking-tight">Пользователи</h1>
+                <p class="text-sm text-ink-500">Создание, изменение, блокировка и удаление</p>
+              </div>
+              <div class="flex gap-2">
+                <input x-model="adminUserSearch" @input="adminUserPage=1" placeholder="Поиск..." class="w-56 px-3 py-2 border border-ink-200 rounded-lg text-sm">
+                <button @click="openCreateUser()" class="bg-brand-600 hover:bg-brand-700 text-white text-sm px-4 py-2 rounded-lg font-medium shadow-soft">+ Создать</button>
+              </div>
+            </div>
+            <div class="bg-white border border-ink-200 rounded-xl overflow-hidden shadow-soft">
+              <table class="min-w-full text-sm">
+                <thead class="bg-ink-50 text-ink-500 uppercase text-xs">
+                  <tr>
+                    <th class="px-4 py-3 text-left">Имя</th>
+                    <th class="px-4 py-3 text-left">Email</th>
+                    <th class="px-4 py-3 text-left">Тип</th>
+                    <th class="px-4 py-3 text-left">Группа</th>
+                    <th class="px-4 py-3 text-left">Регистр.</th>
+                    <th class="px-4 py-3 text-left">Роли</th>
+                    <th class="px-4 py-3">Статус</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="u in pagedAdminUsers()" :key="u.id">
+                    <tr class="border-t border-ink-100 hover:bg-ink-50">
+                      <td class="px-4 py-3 font-medium" x-text="u.first_name + ' ' + u.last_name"></td>
+                      <td class="px-4 py-3 text-ink-600" x-text="u.email"></td>
+                      <td class="px-4 py-3">
+                        <span class="text-[11px] px-1.5 py-0.5 rounded font-medium"
+                              :class="({student:'bg-sky-100 text-sky-700',teacher:'bg-violet-100 text-violet-700',staff:'bg-amber-100 text-amber-700'}[u.user_type] || 'bg-sky-100 text-sky-700')"
+                              x-text="({student:'Студент',teacher:'Преподаватель',staff:'Сотрудник'}[u.user_type] || 'Студент')"></span>
+                      </td>
+                      <td class="px-4 py-3 text-ink-600 text-xs" x-text="u.group_name || '—'"></td>
+                      <td class="px-4 py-3 text-ink-600" x-text="formatDate(u.registration_date)"></td>
+                      <td class="px-4 py-3">
+                        <div class="flex flex-wrap gap-1">
+                          <span x-show="u.is_admin" class="text-[10px] px-1.5 py-0.5 bg-rose-100 text-rose-700 rounded font-medium">admin</span>
+                          <span x-show="u.is_organizer" class="text-[10px] px-1.5 py-0.5 bg-brand-100 text-brand-700 rounded font-medium">organizer</span>
+                          <span x-show="u.is_participant" class="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded font-medium">participant</span>
+                        </div>
+                      </td>
+                      <td class="px-4 py-3 text-center">
+                        <span class="text-xs px-2 py-0.5 rounded font-medium" :class="u.status ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'" x-text="u.status ? 'активен' : 'заблокирован'"></span>
+                      </td>
+                      <td class="px-4 py-3 text-right">
+                        <div class="flex justify-end gap-1">
+                          <button @click="openEditUser(u)" class="text-xs px-2 py-1 border border-ink-200 rounded hover:bg-ink-50">✎</button>
+                          <button @click="toggleUserStatus(u)" class="text-xs px-2 py-1 border border-ink-200 rounded hover:bg-ink-50" :title="u.status ? 'Заблокировать' : 'Разблокировать'" x-text="u.status ? '🚫' : '✓'"></button>
+                          <button @click="deleteUser(u)" class="text-xs px-2 py-1 border border-rose-200 text-rose-600 rounded hover:bg-rose-50">✕</button>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+              <p x-show="!filteredAdminUsers().length" class="text-center text-ink-400 py-8 text-sm">Пользователи не найдены</p>
+              <div x-show="adminUsersPagesCount() > 1" class="p-3 border-t border-ink-200 flex items-center justify-between gap-2 text-sm">
+                <span class="text-xs text-ink-500" x-text="'Всего: ' + filteredAdminUsers().length"></span>
+                <div class="flex gap-2 items-center">
+                  <button @click="adminUserPage = Math.max(1, adminUserPage - 1)" :disabled="adminUserPage === 1" class="px-3 py-1 border border-ink-200 rounded disabled:opacity-50 hover:bg-ink-50">← Назад</button>
+                  <span class="text-xs text-ink-500" x-text="'Страница ' + adminUserPage + ' из ' + adminUsersPagesCount()"></span>
+                  <button @click="adminUserPage = Math.min(adminUsersPagesCount(), adminUserPage + 1)" :disabled="adminUserPage === adminUsersPagesCount()" class="px-3 py-1 border border-ink-200 rounded disabled:opacity-50 hover:bg-ink-50">Вперёд →</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div x-show="adminTab==='projects'">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h1 class="text-2xl font-semibold text-ink-900 tracking-tight">Проекты</h1>
+                <p class="text-sm text-ink-500">Любой проект можно архивировать, восстановить или удалить</p>
+              </div>
+              <select x-model="adminProjectFilter" @change="loadAdminTab()" class="px-3 py-2 border border-ink-200 rounded-lg text-sm">
+                <option value="">Все статусы</option>
+                <option value="активен">Активные</option>
+                <option value="завершён">Завершённые</option>
+                <option value="архивирован">Архивированные</option>
+              </select>
+            </div>
+            <div class="bg-white border border-ink-200 rounded-xl overflow-hidden shadow-soft">
+              <table class="min-w-full text-sm">
+                <thead class="bg-ink-50 text-ink-500 uppercase text-xs">
+                  <tr>
+                    <th class="px-4 py-3 text-left">Название</th>
+                    <th class="px-4 py-3 text-left">Организатор</th>
+                    <th class="px-4 py-3 text-left">Категория</th>
+                    <th class="px-4 py-3">Статус</th>
+                    <th class="px-4 py-3">Участн.</th>
+                    <th class="px-4 py-3 text-left">Создан</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="p in pagedAdminProjects()" :key="p.id">
+                    <tr class="border-t border-ink-100 hover:bg-ink-50">
+                      <td class="px-4 py-3 font-medium cursor-pointer hover:text-brand-700" @click="openProject(p.id)" x-text="p.title"></td>
+                      <td class="px-4 py-3 text-ink-600" x-text="p.organizer_name"></td>
+                      <td class="px-4 py-3 text-ink-600" x-text="p.category_name || ''"></td>
+                      <td class="px-4 py-3 text-center"><span class="text-xs px-2 py-0.5 rounded font-medium" :class="statusColor(p.status)" x-text="p.status"></span></td>
+                      <td class="px-4 py-3 text-center" x-text="p.participants_count || 0"></td>
+                      <td class="px-4 py-3 text-ink-600" x-text="formatDate(p.creation_date)"></td>
+                      <td class="px-4 py-3 text-right">
+                        <div class="flex justify-end gap-1">
+                          <button @click="openProject(p.id)" class="text-xs px-2 py-1 border border-ink-200 rounded hover:bg-ink-50" title="Открыть">Открыть</button>
+                          <button x-show="p.status==='активен'" @click="archiveProjectAdmin(p)" class="text-xs px-2 py-1 border border-ink-200 rounded hover:bg-ink-50" title="В архив">В архив</button>
+                          <button x-show="p.status==='архивирован'" @click="restoreProjectAdmin(p)" class="text-xs px-2 py-1 border border-emerald-200 text-emerald-700 rounded hover:bg-emerald-50" title="Восстановить">Восст.</button>
+                          <button @click="deleteProjectAdmin(p)" class="text-xs px-2 py-1 border border-rose-200 text-rose-600 rounded hover:bg-rose-50" title="Удалить">Удалить</button>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+              <p x-show="!adminProjects.length" class="text-center text-ink-400 py-8 text-sm">Проекты не найдены</p>
+              <div x-show="adminProjectsPagesCount() > 1" class="p-3 border-t border-ink-200 flex items-center justify-between gap-2 text-sm">
+                <span class="text-xs text-ink-500" x-text="'Всего: ' + filteredAdminProjects().length"></span>
+                <div class="flex gap-2 items-center">
+                  <button @click="adminProjectPage = Math.max(1, adminProjectPage - 1)" :disabled="adminProjectPage === 1" class="px-3 py-1 border border-ink-200 rounded disabled:opacity-50 hover:bg-ink-50">← Назад</button>
+                  <span class="text-xs text-ink-500" x-text="'Страница ' + adminProjectPage + ' из ' + adminProjectsPagesCount()"></span>
+                  <button @click="adminProjectPage = Math.min(adminProjectsPagesCount(), adminProjectPage + 1)" :disabled="adminProjectPage === adminProjectsPagesCount()" class="px-3 py-1 border border-ink-200 rounded disabled:opacity-50 hover:bg-ink-50">Вперёд →</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div x-show="adminTab==='requests'">
+            <h1 class="text-2xl font-semibold text-ink-900 tracking-tight mb-1">Заявки на роли</h1>
+            <p class="text-sm text-ink-500 mb-4">Подтверждение прав на создание проектов и присвоение типа «преподаватель»</p>
+
+            <div class="flex flex-wrap gap-1.5 mb-3">
+              <template x-for="opt in [
+                {k:'all',label:'Все типы'},
+                {k:'organizer',label:'На организатора'},
+                {k:'teacher',label:'На преподавателя'},
+              ]" :key="opt.k">
+                <button @click="adminRequestTypeFilter = opt.k"
+                        :class="adminRequestTypeFilter === opt.k
+                          ? 'bg-violet-600 text-white border-violet-600'
+                          : 'bg-white text-ink-700 border-ink-200 hover:border-violet-400'"
+                        class="text-xs px-3 py-1.5 rounded-lg border font-medium transition">
+                  <span x-text="opt.label"></span>
+                </button>
+              </template>
+            </div>
+            <div class="flex flex-wrap gap-1.5 mb-4">
+              <template x-for="opt in [
+                {k:'all',label:'Все'},
+                {k:'pending',label:'В рассмотрении'},
+                {k:'approved',label:'Одобренные'},
+                {k:'rejected',label:'Отклонённые'},
+              ]" :key="opt.k">
+                <button @click="adminRequestFilter = opt.k"
+                        :class="adminRequestFilter === opt.k
+                          ? 'bg-brand-600 text-white border-brand-600'
+                          : 'bg-white text-ink-700 border-ink-200 hover:border-brand-400'"
+                        class="text-xs px-3 py-1.5 rounded-lg border font-medium transition">
+                  <span x-text="opt.label"></span>
+                  <span class="ml-1 text-[10px] opacity-70" x-text="'(' + adminRequestCount(opt.k) + ')'"></span>
+                </button>
+              </template>
+            </div>
+            <div class="space-y-3">
+              <template x-for="r in filteredAdminRequests()" :key="r.id">
+                <div class="bg-white border border-ink-200 rounded-xl p-5 shadow-soft">
+                  <div class="flex items-start justify-between gap-4 mb-3">
+                    <div class="flex items-center gap-3">
+                      <div class="w-11 h-11 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-semibold" x-text="((r.first_name||'?')[0]+'').toUpperCase()"></div>
+                      <div>
+                        <div class="text-sm font-semibold text-ink-900" x-text="(r.first_name || '') + ' ' + (r.last_name || '')"></div>
+                        <div class="text-xs text-ink-500" x-text="r.email"></div>
+                        <div class="text-[11px] text-ink-400 mt-0.5">Подана: <span x-text="formatDate(r.submission_date)"></span></div>
+                      </div>
+                    </div>
+                    <div class="flex flex-col items-end gap-2 shrink-0">
+                      <span class="text-[11px] px-2 py-0.5 rounded font-medium"
+                            :class="(r.request_type === 'teacher') ? 'bg-violet-100 text-violet-700' : 'bg-brand-100 text-brand-700'"
+                            x-text="(r.request_type === 'teacher') ? 'Преподаватель' : 'Организатор'"></span>
+                      <span class="text-xs px-2 py-0.5 rounded font-medium" :class="statusColor(r.status)" x-text="r.status"></span>
+                      <div x-show="r.status === 'в рассмотрении'" class="flex gap-1">
+                        <button @click="approveOrganizer(r.id)" class="text-xs px-3 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 font-medium">Одобрить</button>
+                        <button @click="rejectOrganizer(r.id)" class="text-xs px-3 py-1.5 bg-rose-100 text-rose-700 rounded hover:bg-rose-200 font-medium">Отклонить</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="space-y-3 text-sm">
+                    <div>
+                      <div class="text-[11px] uppercase tracking-wide text-ink-500 font-medium mb-0.5">Описание</div>
+                      <div class="text-ink-800 whitespace-pre-wrap" x-text="r.experience_description || ''"></div>
+                    </div>
+                    <div x-show="r.resume_url">
+                      <div class="text-[11px] uppercase tracking-wide text-ink-500 font-medium mb-0.5">Резюме</div>
+                      <a :href="r.resume_url" target="_blank" class="text-brand-600 hover:underline text-sm break-all" x-text="fileLabel(r.resume_url)"></a>
+                    </div>
+                  </div>
+                  <div x-show="(r.skills && r.skills.length) || (r.interests && r.interests.length)" class="mt-3 pt-3 border-t border-ink-100 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div x-show="r.skills && r.skills.length">
+                      <div class="text-[11px] uppercase tracking-wide text-ink-500 font-medium mb-1">Навыки</div>
+                      <div class="flex flex-wrap gap-1">
+                        <template x-for="s in r.skills" :key="s">
+                          <span class="text-[11px] px-2 py-0.5 bg-brand-50 text-brand-700 rounded-full font-medium" x-text="s"></span>
+                        </template>
+                      </div>
+                    </div>
+                    <div x-show="r.interests && r.interests.length">
+                      <div class="text-[11px] uppercase tracking-wide text-ink-500 font-medium mb-1">Интересы</div>
+                      <div class="flex flex-wrap gap-1">
+                        <template x-for="i in r.interests" :key="i">
+                          <span class="text-[11px] px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full font-medium" x-text="i"></span>
+                        </template>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </template>
+              <p x-show="!adminRequests.length" class="text-center text-ink-400 py-8 text-sm">Заявок нет</p>
+            </div>
+          </div>
+
+          <div x-show="adminTab==='dictionaries'">
+            <h1 class="text-2xl font-semibold text-ink-900 tracking-tight mb-1">Справочники</h1>
+            <p class="text-sm text-ink-500 mb-4">Категории проектов, теги (навыки/темы) и учебные группы</p>
+
+            <div class="flex gap-1.5 mb-4 border-b border-ink-200">
+              <template x-for="t in [
+                {k:'categories', label:'Категории'},
+                {k:'tags',       label:'Теги / Навыки'},
+                {k:'groups',     label:'Учебные группы'},
+              ]" :key="t.k">
+                <button @click="setDictTab(t.k)"
+                        :class="dictTab === t.k
+                          ? 'border-brand-600 text-brand-700 font-semibold'
+                          : 'border-transparent text-ink-500 hover:text-ink-900'"
+                        class="px-3 py-2 text-sm border-b-2 transition">
+                  <span x-text="t.label"></span>
+                </button>
+              </template>
+            </div>
+
+            <div class="bg-white border border-ink-200 rounded-xl shadow-soft">
+              <div class="p-4 border-b border-ink-200 flex flex-wrap items-center gap-3">
+                <input x-model="dictSearch" @input="dictPage = 1" placeholder="Поиск..." class="flex-1 min-w-[200px] px-3 py-2 border border-ink-200 rounded-lg text-sm">
+                <button @click="openDictForm(null)" class="text-sm px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium">+ Добавить</button>
+                <span class="text-xs text-ink-500" x-text="'Всего: ' + filteredDict().length"></span>
+              </div>
+              <div class="divide-y divide-ink-100">
+                <template x-for="item in pagedDict()" :key="item.id">
+                  <div class="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-ink-50">
+                    <span class="text-sm text-ink-900 font-medium" x-text="item.name"></span>
+                    <div class="flex gap-1">
+                      <button @click="openDictForm(item)" class="text-[11px] px-2 py-1 border border-ink-200 rounded hover:bg-ink-100">Изменить</button>
+                      <button @click="deleteDict(item)" class="text-[11px] px-2 py-1 bg-rose-100 text-rose-700 rounded hover:bg-rose-200">Удалить</button>
+                    </div>
+                  </div>
+                </template>
+                <p x-show="!filteredDict().length" class="text-center text-ink-400 py-8 text-sm italic">Пусто</p>
+              </div>
+              <div x-show="dictPagesCount() > 1" class="p-3 border-t border-ink-200 flex items-center justify-center gap-2 text-sm">
+                <button @click="dictPage = Math.max(1, dictPage - 1)" :disabled="dictPage === 1" class="px-3 py-1 border border-ink-200 rounded disabled:opacity-50 hover:bg-ink-50">← Назад</button>
+                <span class="text-xs text-ink-500" x-text="'Страница ' + dictPage + ' из ' + dictPagesCount()"></span>
+                <button @click="dictPage = Math.min(dictPagesCount(), dictPage + 1)" :disabled="dictPage === dictPagesCount()" class="px-3 py-1 border border-ink-200 rounded disabled:opacity-50 hover:bg-ink-50">Вперёд →</button>
+              </div>
+            </div>
+
+            <div x-show="showDictForm" x-cloak class="fixed inset-0 bg-ink-900/50 flex items-center justify-center z-50 p-4">
+              <div class="bg-white rounded-xl w-full max-w-md shadow-xl">
+                <div class="p-5 border-b border-ink-200 flex items-center justify-between">
+                  <h3 class="font-semibold text-ink-900" x-text="(dictDraft.id ? 'Редактирование: ' : 'Новая ') + dictTabLabel()"></h3>
+                  <button @click="showDictForm=false" class="text-ink-400 hover:text-ink-700 text-2xl leading-none">×</button>
+                </div>
+                <form @submit.prevent="saveDict()" class="p-5 space-y-3">
+                  <div>
+                    <label class="text-xs font-medium text-ink-700 block mb-1">Название <span class="text-rose-500">*</span></label>
+                    <input x-model="dictDraft.name" required class="w-full px-3 py-2 border border-ink-200 rounded-lg text-sm">
+                  </div>
+                  <div class="flex gap-2 pt-2 border-t border-ink-200">
+                    <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white text-sm px-4 py-2 rounded-lg font-medium">Сохранить</button>
+                    <button type="button" @click="showDictForm=false" class="text-sm px-4 py-2 text-ink-600 hover:bg-ink-100 rounded-lg">Отмена</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <div x-show="adminTab==='reports'" class="space-y-5">
+            <h1 class="text-2xl font-semibold text-ink-900 tracking-tight mb-1">Отчёты и KPI</h1>
+            <p class="text-sm text-ink-500">Ключевые показатели эффективности участников и проектов</p>
+
+            <div class="bg-white border border-ink-200 rounded-xl p-4 shadow-soft flex flex-wrap items-end gap-3">
+              <div>
+                <label class="text-xs text-ink-500 uppercase tracking-wide block mb-1">Период с</label>
+                <input type="date" x-model="reportFrom" class="px-3 py-2 border border-ink-200 rounded-lg text-sm">
+              </div>
+              <div>
+                <label class="text-xs text-ink-500 uppercase tracking-wide block mb-1">по</label>
+                <input type="date" x-model="reportTo" class="px-3 py-2 border border-ink-200 rounded-lg text-sm">
+              </div>
+              <div>
+                <label class="text-xs text-ink-500 uppercase tracking-wide block mb-1">Группа</label>
+                <select x-model="reportGroupID" class="px-3 py-2 border border-ink-200 rounded-lg text-sm">
+                  <option value="">Все группы</option>
+                  <template x-for="g in groups" :key="g.id">
+                    <option :value="g.id" x-text="g.name"></option>
+                  </template>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-ink-500 uppercase tracking-wide block mb-1">Тип пользователя</label>
+                <select x-model="reportUserType" class="px-3 py-2 border border-ink-200 rounded-lg text-sm">
+                  <option value="">Все типы</option>
+                  <option value="student">Студент</option>
+                  <option value="teacher">Преподаватель</option>
+                  <option value="staff">Сотрудник</option>
+                </select>
+              </div>
+              <button @click="loadKpiTables()" class="text-sm px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 font-medium shadow-soft">Применить</button>
+              <button @click="reportFrom=''; reportTo=''; reportGroupID=''; reportUserType=''; loadKpiTables()" class="text-sm px-3 py-2 text-ink-600 hover:bg-ink-100 rounded-lg">Сбросить</button>
+              <div class="ml-auto">
+                <button @click="downloadKpiExcel()" class="text-sm px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium shadow-soft">📊 Скачать KPI-отчёт (Excel)</button>
+              </div>
+            </div>
+
+            <div class="bg-white border border-ink-200 rounded-xl overflow-hidden shadow-soft">
+              <div class="px-4 py-3 text-xs font-semibold text-ink-500 uppercase bg-ink-50 border-b border-ink-200">KPI проектов</div>
+              <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                  <thead class="bg-ink-50 text-ink-500 uppercase text-xs">
+                    <tr>
+                      <th class="px-3 py-2 text-left">Проект</th>
+                      <th class="px-3 py-2 text-center">Статус</th>
+                      <th class="px-3 py-2 text-center">Участн.</th>
+                      <th class="px-3 py-2 text-center">Задач</th>
+                      <th class="px-3 py-2 text-center">Готово</th>
+                      <th class="px-3 py-2 text-center">% готов.</th>
+                      <th class="px-3 py-2 text-center">% в срок</th>
+                      <th class="px-3 py-2 text-center">Ср. время</th>
+                      <th class="px-3 py-2 text-center">Качество</th>
+                      <th class="px-3 py-2 text-center">Цели</th>
+                      <th class="px-3 py-2 text-center">Сроки</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template x-for="p in kpiProjects" :key="p.project_id">
+                      <tr class="border-t border-ink-100 hover:bg-ink-50">
+                        <td class="px-3 py-2 font-medium cursor-pointer hover:text-brand-700" @click="openProject(p.project_id)" x-text="p.title"></td>
+                        <td class="px-3 py-2 text-center"><span class="text-[11px] px-1.5 py-0.5 rounded font-medium" :class="statusColor(p.status)" x-text="p.status"></span></td>
+                        <td class="px-3 py-2 text-center" x-text="p.participants_count"></td>
+                        <td class="px-3 py-2 text-center" x-text="p.tasks_total"></td>
+                        <td class="px-3 py-2 text-center" x-text="p.tasks_completed"></td>
+                        <td class="px-3 py-2 text-center font-medium" x-text="Math.round(p.completion_rate) + '%'"></td>
+                        <td class="px-3 py-2 text-center" x-text="Math.round(p.on_time_rate) + '%'"></td>
+                        <td class="px-3 py-2 text-center" x-text="p.avg_task_days.toFixed(1) + ' д'"></td>
+                        <td class="px-3 py-2 text-center" x-text="p.avg_quality > 0 ? '★ ' + p.avg_quality.toFixed(1) : ''"></td>
+                        <td class="px-3 py-2 text-center" x-text="p.goals_total ? p.goals_achieved + '/' + p.goals_total : ''"></td>
+                        <td class="px-3 py-2 text-center">
+                          <span x-show="p.on_schedule === true" class="text-[11px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded font-medium" x-text="p.status === 'завершён' ? 'вовремя' : 'в срок'"></span>
+                          <span x-show="p.on_schedule === false" class="text-[11px] px-1.5 py-0.5 bg-rose-100 text-rose-700 rounded font-medium" x-text="p.status === 'завершён' ? 'с опозданием' : 'риск срыва'"></span>
+                          <span x-show="p.on_schedule === null" class="text-ink-400 text-xs">—</span>
+                        </td>
+                        <td class="px-3 py-2 text-right"><button @click="downloadProjectReport(p.project_id)" class="text-xs px-2 py-1 border border-ink-200 rounded hover:bg-ink-50">Excel</button></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="bg-white border border-ink-200 rounded-xl overflow-hidden shadow-soft">
+              <div class="px-4 py-3 text-xs font-semibold text-ink-500 uppercase bg-ink-50 border-b border-ink-200">KPI участников</div>
+              <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                  <thead class="bg-ink-50 text-ink-500 uppercase text-xs">
+                    <tr>
+                      <th class="px-3 py-2 text-left">Пользователь</th>
+                      <th class="px-3 py-2 text-center">Тип</th>
+                      <th class="px-3 py-2 text-left">Группа</th>
+                      <th class="px-3 py-2 text-center">Назнач.</th>
+                      <th class="px-3 py-2 text-center">Выполн.</th>
+                      <th class="px-3 py-2 text-center">% в срок</th>
+                      <th class="px-3 py-2 text-center">Ср. сложн.</th>
+                      <th class="px-3 py-2 text-center">Ср. кач.</th>
+                      <th class="px-3 py-2 text-center">Комм.</th>
+                      <th class="px-3 py-2 text-center">Сообщ.</th>
+                      <th class="px-3 py-2 text-center" title="Общий вклад в проект: комментарии + сообщения + действия из лога">Вклад в проект</th>
+                      <th class="px-3 py-2 text-center" title="Из последних 30 дней — в скольких юзер совершал хоть какое-то действие (логин, коммент, изменение задачи, сообщение). Считается DISTINCT по дате.">Регулярность, д/мес</th>
+                      <th class="px-3 py-2 text-center">Последний раз</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template x-for="u in kpiUsers" :key="u.user_id">
+                      <tr class="border-t border-ink-100">
+                        <td class="px-3 py-2"><div class="font-medium" x-text="u.first_name + ' ' + u.last_name"></div><div class="text-[11px] text-ink-500" x-text="u.email"></div></td>
+                        <td class="px-3 py-2 text-center">
+                          <span class="text-[11px] px-1.5 py-0.5 rounded font-medium" :class="userTypeBadgeClass(u.user_type)" x-text="userTypeLabel(u.user_type)"></span>
+                        </td>
+                        <td class="px-3 py-2 text-xs text-ink-600" x-text="u.group_name || '—'"></td>
+                        <td class="px-3 py-2 text-center" x-text="u.tasks_assigned"></td>
+                        <td class="px-3 py-2 text-center font-medium" x-text="u.tasks_completed"></td>
+                        <td class="px-3 py-2 text-center" :class="u.on_time_percent >= 80 ? 'text-emerald-600' : u.on_time_percent < 50 && u.tasks_completed ? 'text-rose-600' : ''" x-text="u.on_time_percent.toFixed(0) + '%'"></td>
+                        <td class="px-3 py-2 text-center" x-text="u.avg_difficulty > 0 ? u.avg_difficulty.toFixed(1) : ''"></td>
+                        <td class="px-3 py-2 text-center" x-text="u.avg_quality > 0 ? '★ ' + u.avg_quality.toFixed(1) : ''"></td>
+                        <td class="px-3 py-2 text-center" x-text="u.comments_count"></td>
+                        <td class="px-3 py-2 text-center" x-text="u.messages_count"></td>
+                        <td class="px-3 py-2 text-center font-medium text-brand-700">
+                          <span x-text="u.activity_score"></span>
+                          <span class="text-[10px] text-ink-400 font-normal">соб.</span>
+                        </td>
+                        <td class="px-3 py-2 text-center">
+                          <div class="text-xs" :class="u.regularity_pct >= 50 ? 'text-emerald-600' : u.regularity_pct < 20 ? 'text-rose-500' : ''">
+                            <span x-text="u.active_days_30 + '/30'"></span>
+                            <span class="text-[10px] text-ink-400">д</span>
+                            <span class="text-ink-500" x-text="'(' + Math.round(u.regularity_pct) + '%)'"></span>
+                          </div>
+                        </td>
+                        <td class="px-3 py-2 text-center text-xs text-ink-500" x-text="u.last_active ? formatDate(u.last_active) : ''"></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>

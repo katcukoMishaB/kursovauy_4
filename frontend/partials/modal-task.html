@@ -1,0 +1,56 @@
+  <div x-show="showTaskForm" x-cloak class="fixed inset-0 bg-ink-900/50 z-40 flex items-center justify-center p-4 backdrop-blur-sm" @click.self="showTaskForm=false">
+    <div class="bg-white rounded-xl w-full max-w-lg shadow-pop">
+      <div class="px-6 py-4 border-b border-ink-200">
+        <h3 class="text-lg font-semibold text-ink-900" x-text="taskDraft.id ? 'Редактирование задачи' : 'Новая задача'"></h3>
+      </div>
+      <form @submit.prevent="saveTask()" class="p-6 space-y-4">
+        <div>
+          <label class="text-sm font-medium text-ink-700">Название</label>
+          <input x-model="taskDraft.title" required class="mt-1 w-full px-3 py-2 border border-ink-200 rounded-lg text-sm">
+        </div>
+        <div>
+          <label class="text-sm font-medium text-ink-700">Описание</label>
+          <textarea x-model="taskDraft.description" rows="3" class="mt-1 w-full px-3 py-2 border border-ink-200 rounded-lg text-sm"></textarea>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="text-sm font-medium text-ink-700">Приоритет</label>
+            <select x-model="taskDraft.priority" class="mt-1 w-full px-3 py-2 border border-ink-200 rounded-lg text-sm">
+              <option value="низкий">! Низкий</option>
+              <option value="средний">!! Средний</option>
+              <option value="высокий">!!! Высокий</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-sm font-medium text-ink-700">Сложность</label>
+            <select x-model="taskDraft.difficulty" class="mt-1 w-full px-3 py-2 border border-ink-200 rounded-lg text-sm">
+              <option value="1">★☆☆☆☆ 1</option>
+              <option value="2">★★☆☆☆ 2</option>
+              <option value="3">★★★☆☆ 3</option>
+              <option value="4">★★★★☆ 4</option>
+              <option value="5">★★★★★ 5</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-sm font-medium text-ink-700">Дедлайн</label>
+            <input type="date" x-model="taskDraft.due_date" class="mt-1 w-full px-3 py-2 border border-ink-200 rounded-lg text-sm">
+          </div>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-ink-700">Вложение</label>
+          <div class="mt-1 flex gap-2">
+            <input type="text" x-model="taskDraft.attachment_url" placeholder="https://... или загрузите файл" class="flex-1 px-3 py-2 border border-ink-200 rounded-lg text-sm">
+            <label class="text-sm px-3 py-2 border border-ink-200 rounded-lg cursor-pointer hover:bg-ink-50 whitespace-nowrap">
+              Загрузить
+              <input type="file" class="hidden" @change="uploadField($event, 'taskDraft', 'attachment_url')">
+            </label>
+            <button type="button" x-show="taskDraft.attachment_url" @click="taskDraft.attachment_url=''" class="text-sm px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-lg">×</button>
+          </div>
+          <p x-show="taskDraft.attachment_url" class="text-xs text-emerald-600 mt-1">✓ <span x-text="fileLabel(taskDraft.attachment_url)"></span></p>
+        </div>
+        <div class="flex gap-2 pt-2">
+          <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white text-sm px-5 py-2 rounded-lg font-medium">Сохранить</button>
+          <button type="button" @click="showTaskForm=false" class="text-sm px-5 py-2 text-ink-600 hover:bg-ink-100 rounded-lg">Отмена</button>
+        </div>
+      </form>
+    </div>

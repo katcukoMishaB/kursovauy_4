@@ -25,3 +25,15 @@ type ProjectEfficiencyReport struct {
 	TasksCompleted    int        `json:"tasks_completed"`
 	CompletionRate    float64    `json:"completion_rate"`
 }
+
+type Summary struct {
+	TotalUsers            int     `json:"total_users"`
+	ActiveUsers           int     `json:"active_users"`
+	TotalProjects         int     `json:"total_projects"`
+	ActiveProjects        int     `json:"active_projects"`
+	CompletedProjects     int     `json:"completed_projects"`
+	TotalTasks            int     `json:"total_tasks"`
+	CompletedTasks        int     `json:"completed_tasks"`
+	AverageCompletionRate float64 `json:"average_completion_rate"`
+}
+

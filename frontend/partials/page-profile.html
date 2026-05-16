@@ -1,0 +1,161 @@
+        <section x-show="page==='profile' && user" x-cloak class="p-8 max-w-5xl mx-auto">
+          <div class="bg-white border border-ink-200 rounded-xl p-7 shadow-soft mb-5">
+            <div class="flex items-center gap-5">
+              <div class="w-20 h-20 rounded-full bg-brand-600 text-white flex items-center justify-center text-3xl font-semibold shadow-soft" x-text="(user.first_name || '?')[0]?.toUpperCase()"></div>
+              <div class="flex-1">
+                <h2 class="text-2xl font-semibold text-ink-900" x-text="user.first_name + ' ' + user.last_name"></h2>
+                <div class="flex items-center gap-2 mt-1 flex-wrap">
+                  <span class="text-sm text-ink-500" x-text="roleLabel(role)"></span>
+                  <span class="text-[11px] px-2 py-0.5 rounded font-medium" :class="userTypeBadgeClass(user.user_type)" x-text="userTypeLabel(user.user_type)"></span>
+                  <span x-show="user.group_name" class="text-[11px] px-2 py-0.5 bg-ink-100 text-ink-700 rounded font-medium" x-text="'Группа: ' + (user.group_name || '')"></span>
+                </div>
+              </div>
+              <button x-show="!editingProfile" @click="startEditProfile()" class="text-sm px-4 py-2 border border-ink-200 rounded-lg hover:bg-ink-50">Редактировать</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div class="bg-white border border-ink-200 rounded-xl p-6 shadow-soft">
+              <h3 class="text-sm font-semibold text-ink-700 mb-4 uppercase tracking-wide">Личные данные</h3>
+              <div x-show="!editingProfile" class="space-y-3 text-sm">
+                <div><div class="text-xs text-ink-500 uppercase tracking-wide">Email</div><div class="mt-0.5" x-text="user.email"></div></div>
+                <div><div class="text-xs text-ink-500 uppercase tracking-wide">Дата регистрации</div><div class="mt-0.5" x-text="formatDate(user.registration_date)"></div></div>
+                <div><div class="text-xs text-ink-500 uppercase tracking-wide">Статус</div><div class="mt-0.5"><span class="text-xs px-2 py-0.5 rounded font-medium" :class="user.status ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'" x-text="user.status ? 'Активен' : 'Заблокирован'"></span></div></div>
+                <div><div class="text-xs text-ink-500 uppercase tracking-wide">Тип пользователя</div><div class="mt-0.5"><span class="text-xs px-2 py-0.5 rounded font-medium" :class="userTypeBadgeClass(user.user_type)" x-text="userTypeLabel(user.user_type)"></span></div></div>
+                <div><div class="text-xs text-ink-500 uppercase tracking-wide">Учебная группа</div><div class="mt-0.5" x-text="user.group_name || '— (не указана)'"></div></div>
+              </div>
+
+              <form x-show="editingProfile" @submit.prevent="saveProfile()" class="space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                  <input x-model="profileDraft.first_name" required placeholder="Имя" class="px-3 py-2 border border-ink-200 rounded-lg text-sm">
+                  <input x-model="profileDraft.last_name" required placeholder="Фамилия" class="px-3 py-2 border border-ink-200 rounded-lg text-sm">
+                </div>
+                <input x-model="profileDraft.password" type="password" placeholder="Новый пароль (необязательно)" class="w-full px-3 py-2 border border-ink-200 rounded-lg text-sm">
+                <div>
+                  <label class="text-xs font-medium text-ink-700 block mb-1">Учебная группа</label>
+                  <select x-model="profileDraft.group_id" class="w-full px-3 py-2 border border-ink-200 rounded-lg text-sm">
+                    <option value="">— Не указывать —</option>
+                    <template x-for="g in groups" :key="g.id">
+                      <option :value="g.id" x-text="g.name"></option>
+                    </template>
+                  </select>
+                  <p class="text-[11px] text-ink-500 mt-1">Список групп ведёт администратор. Если вашей нет попросите добавить.</p>
+                </div>
+                <div class="flex gap-2 pt-1">
+                  <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white text-sm px-4 py-2 rounded-lg font-medium">Сохранить</button>
+                  <button type="button" @click="editingProfile=false" class="text-sm px-4 py-2 text-ink-600 hover:bg-ink-100 rounded-lg">Отмена</button>
+                </div>
+              </form>
+            </div>
+
+            <div class="bg-white border border-ink-200 rounded-xl p-6 shadow-soft">
+              <h3 class="text-sm font-semibold text-ink-700 mb-1 uppercase tracking-wide">Мои навыки</h3>
+              <p class="text-xs text-ink-500 mb-3">Используются для рекомендации проектов и подбора задач</p>
+              <div class="flex flex-wrap gap-1.5 mb-3">
+                <template x-for="s in mySkills">
+                  <span class="inline-flex items-center gap-1 text-sm px-3 py-1 bg-brand-50 text-brand-700 rounded-full font-medium">
+                    <span x-text="s"></span>
+                    <button @click="removeMySkill(s)" class="text-brand-700 hover:text-rose-600 ml-0.5">×</button>
+                  </span>
+                </template>
+                <p x-show="!mySkills.length" class="text-sm text-ink-400 italic">Пока ничего не указано</p>
+              </div>
+              <input x-model="skillSearch" placeholder="Поиск навыка из каталога..." class="w-full px-3 py-1.5 border border-ink-200 rounded-lg text-[13px]">
+              <div class="mt-2 flex flex-wrap gap-1 max-h-48 overflow-y-auto p-2 border border-ink-100 rounded-lg bg-ink-50/50 scrollbar-thin">
+                <template x-for="t in filteredSkillCatalog()" :key="t.id">
+                  <button type="button" @click="skillInput = t.name; addMySkill()" class="text-[11px] px-2 py-0.5 rounded-full border bg-white text-ink-600 border-ink-200 hover:bg-brand-50 hover:border-brand-400 hover:text-brand-700 transition" x-text="t.name"></button>
+                </template>
+                <p x-show="!filteredSkillCatalog().length" class="text-xs text-ink-400 italic w-full text-center py-2">Все добавлены или не найдено</p>
+              </div>
+            </div>
+
+            <div class="bg-white border border-ink-200 rounded-xl p-6 shadow-soft lg:col-span-2">
+              <h3 class="text-sm font-semibold text-ink-700 mb-1 uppercase tracking-wide">Интересы</h3>
+              <p class="text-xs text-ink-500 mb-3">Выберите категории проектов, которые вас интересуют</p>
+              <div class="flex flex-wrap gap-1.5">
+                <template x-for="c in categories" :key="c.id">
+                  <button @click="toggleInterest(c)" class="text-sm px-3 py-1 rounded-full border transition"
+                          :class="isInterested(c.id) ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-ink-700 border-ink-200 hover:border-brand-400 hover:text-brand-700'">
+                    <span x-text="c.name"></span>
+                  </button>
+                </template>
+              </div>
+            </div>
+
+            <div x-show="role==='participant'" class="bg-white border border-ink-200 rounded-xl p-6 shadow-soft">
+              <h3 class="font-semibold mb-1 text-ink-900">Стать организатором</h3>
+              <p class="text-sm text-ink-500 mb-3">Подайте заявку, чтобы получить возможность создавать проекты.</p>
+
+              <div x-show="hasPendingOrganizerRequest()" class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                <div class="font-medium mb-1">Заявка ещё рассматривается</div>
+                <div class="text-xs">Подана: <span x-text="myOrganizerRequest && formatDate(myOrganizerRequest.submission_date)"></span></div>
+                <div class="text-xs mt-1 italic">Дождитесь решения администратора. Повторно отправить нельзя.</div>
+              </div>
+              <div x-show="myOrganizerRequest && myOrganizerRequest.status === 'отклонена'" class="bg-rose-50 border border-rose-200 rounded-lg p-3 text-sm text-rose-800 mb-2">
+                <div class="font-medium">Предыдущая заявка отклонена</div>
+                <div class="text-xs italic">Можно подать новую с обновлёнными данными.</div>
+              </div>
+
+              <button x-show="!showOrganizerForm && !hasPendingOrganizerRequest()" @click="showOrganizerForm=true" class="text-sm px-4 py-2 border border-brand-600 text-brand-700 rounded-lg hover:bg-brand-50 font-medium">Подать заявку</button>
+              <form x-show="showOrganizerForm && !hasPendingOrganizerRequest()" @submit.prevent="submitOrganizerRequest()" class="space-y-3 mt-2">
+                <div>
+                  <label class="text-xs font-medium text-ink-700 block mb-1">Описание <span class="text-rose-500">*</span></label>
+                  <textarea x-model="organizerDraft.experience_description" required rows="4" placeholder="Расскажите о себе: опыт, мотивация, идеи проектов" class="w-full px-3 py-2 border border-ink-200 rounded-lg text-sm"></textarea>
+                </div>
+                <div>
+                  <label class="text-xs font-medium text-ink-700 block mb-1">Резюме <span class="text-rose-500">*</span></label>
+                  <div class="flex gap-2">
+                    <input type="text" x-model="organizerDraft.resume_url" placeholder="https://... или загрузите файл" class="flex-1 px-3 py-2 border border-ink-200 rounded-lg text-sm">
+                    <label class="text-sm px-3 py-2 border border-ink-200 rounded-lg cursor-pointer hover:bg-ink-50 whitespace-nowrap">
+                      Загрузить
+                      <input type="file" class="hidden" @change="uploadField($event, 'organizerDraft', 'resume_url')">
+                    </label>
+                  </div>
+                  <p x-show="organizerDraft.resume_url" class="text-xs text-emerald-600 mt-1">Прикреплено: <span x-text="fileLabel(organizerDraft.resume_url)"></span></p>
+                </div>
+                <div class="flex gap-2 pt-1">
+                  <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white text-sm px-4 py-2 rounded-lg font-medium">Отправить</button>
+                  <button type="button" @click="showOrganizerForm=false" class="text-sm px-4 py-2 text-ink-600 hover:bg-ink-100 rounded-lg">Отмена</button>
+                </div>
+              </form>
+            </div>
+
+            <div x-show="user && user.user_type !== 'teacher'" class="bg-white border border-ink-200 rounded-xl p-6 shadow-soft">
+              <h3 class="font-semibold mb-1 text-ink-900">Стать преподавателем</h3>
+              <p class="text-sm text-ink-500 mb-3">Если вы преподаватель университета — подайте заявку. Администратор проверит и присвоит роль.</p>
+
+              <div x-show="hasPendingTeacherRequest()" class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                <div class="font-medium mb-1">Заявка ещё рассматривается</div>
+                <div class="text-xs">Подана: <span x-text="myTeacherRequest && formatDate(myTeacherRequest.submission_date)"></span></div>
+                <div class="text-xs mt-1 italic">Дождитесь решения администратора. Повторно отправить нельзя.</div>
+              </div>
+              <div x-show="myTeacherRequest && myTeacherRequest.status === 'отклонена'" class="bg-rose-50 border border-rose-200 rounded-lg p-3 text-sm text-rose-800 mb-2">
+                <div class="font-medium">Предыдущая заявка отклонена</div>
+                <div class="text-xs italic">Можно подать новую с обновлёнными данными.</div>
+              </div>
+
+              <button x-show="!showTeacherForm && !hasPendingTeacherRequest()" @click="showTeacherForm=true" class="text-sm px-4 py-2 border border-violet-600 text-violet-700 rounded-lg hover:bg-violet-50 font-medium">Подать заявку на преподавателя</button>
+              <form x-show="showTeacherForm && !hasPendingTeacherRequest()" @submit.prevent="submitTeacherRequest()" class="space-y-3 mt-2">
+                <div>
+                  <label class="text-xs font-medium text-ink-700 block mb-1">Кафедра, должность, опыт <span class="text-rose-500">*</span></label>
+                  <textarea x-model="teacherDraft.experience_description" required rows="4" placeholder="Укажите кафедру, должность, дисциплины, стаж" class="w-full px-3 py-2 border border-ink-200 rounded-lg text-sm"></textarea>
+                </div>
+                <div>
+                  <label class="text-xs font-medium text-ink-700 block mb-1">Подтверждение <span class="text-rose-500">*</span></label>
+                  <div class="flex gap-2">
+                    <input type="text" x-model="teacherDraft.resume_url" placeholder="https://... или загрузите подтверждение" class="flex-1 px-3 py-2 border border-ink-200 rounded-lg text-sm">
+                    <label class="text-sm px-3 py-2 border border-ink-200 rounded-lg cursor-pointer hover:bg-ink-50 whitespace-nowrap">
+                      Загрузить
+                      <input type="file" class="hidden" @change="uploadField($event, 'teacherDraft', 'resume_url')">
+                    </label>
+                  </div>
+                  <p x-show="teacherDraft.resume_url" class="text-xs text-emerald-600 mt-1">Прикреплено: <span x-text="fileLabel(teacherDraft.resume_url)"></span></p>
+                </div>
+                <div class="flex gap-2 pt-1">
+                  <button type="submit" class="bg-violet-600 hover:bg-violet-700 text-white text-sm px-4 py-2 rounded-lg font-medium">Отправить</button>
+                  <button type="button" @click="showTeacherForm=false" class="text-sm px-4 py-2 text-ink-600 hover:bg-ink-100 rounded-lg">Отмена</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </section>

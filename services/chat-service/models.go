@@ -19,6 +19,8 @@ type ChatMessage struct {
 	UserID      string    `json:"user_id" gorm:"column:user_id"`
 	MessageText string    `json:"message_text" gorm:"column:message_text"`
 	SentAt      time.Time `json:"sent_at" gorm:"column:sent_at"`
+	AuthorName  string    `json:"author_name" gorm:"-"`
+	AuthorRole  string    `json:"author_role" gorm:"-"`
 }
 
 func (ChatMessage) TableName() string {

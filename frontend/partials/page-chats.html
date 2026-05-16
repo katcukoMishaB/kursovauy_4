@@ -1,0 +1,55 @@
+        <section x-show="page==='chats'" x-cloak class="p-8 max-w-7xl mx-auto">
+          <h1 class="text-2xl font-semibold text-ink-900 tracking-tight mb-1">Чаты</h1>
+          <p class="text-sm text-ink-500 mb-6">Общение в проектах, в которых вы участвуете</p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 h-[70vh]">
+            <div class="bg-white border border-ink-200 rounded-xl overflow-hidden md:col-span-1 flex flex-col shadow-soft">
+              <div class="p-4 border-b border-ink-200 text-sm font-semibold text-ink-700">Мои проекты</div>
+              <div class="flex-1 overflow-y-auto scrollbar-thin">
+                <template x-for="p in chatProjects" :key="p.id">
+                  <button @click="selectChatProject(p)" class="w-full text-left px-4 py-3 text-sm border-b border-ink-100 hover:bg-ink-50"
+                          :class="activeChatProject?.id === p.id ? 'bg-brand-50 text-brand-700' : ''">
+                    <div class="font-medium line-clamp-1" x-text="p.title"></div>
+                    <div class="text-xs text-ink-500 line-clamp-1 mt-0.5" x-text="p.short_description"></div>
+                  </button>
+                </template>
+                <p x-show="!chatProjects.length" class="text-center text-ink-400 py-8 text-sm">Нет проектов</p>
+              </div>
+            </div>
+            <div class="bg-white border border-ink-200 rounded-xl md:col-span-2 flex flex-col shadow-soft overflow-hidden">
+              <div x-show="!selectedChat" class="flex-1 flex items-center justify-center text-ink-400 text-sm">
+                Выберите проект, чтобы открыть чат
+              </div>
+              <template x-if="selectedChat">
+                <div class="flex flex-col h-full">
+                  <div class="p-4 border-b border-ink-200 text-sm font-semibold text-ink-800" x-text="(activeChatProject?.title || '') + ' / ' + (selectedChat?.name || '')"></div>
+                  <div id="chat-scroll" class="flex-1 overflow-y-auto p-5 space-y-2 scrollbar-thin">
+                    <template x-for="m in messages" :key="m.id">
+                      <div class="flex" :class="m.user_id === user?.id ? 'justify-end' : 'justify-start'">
+                        <div class="max-w-[70%] flex flex-col" :class="m.user_id === user?.id ? 'items-end' : 'items-start'">
+                          <div class="flex items-center gap-1.5 mb-0.5 px-1">
+                            <span class="text-[11px] font-semibold text-ink-700" x-text="m.author_name || 'Неизвестный'"></span>
+                            <span x-show="m.author_role" class="text-[10px] px-1.5 py-0.5 rounded font-medium"
+                                  :class="m.author_role === 'руководитель' ? 'bg-amber-100 text-amber-800' :
+                                          m.author_role === 'заместитель' ? 'bg-indigo-100 text-indigo-700' :
+                                          'bg-ink-100 text-ink-600'"
+                                  x-text="m.author_role"></span>
+                          </div>
+                          <div class="px-3.5 py-2 rounded-2xl text-sm shadow-soft"
+                               :class="m.user_id === user?.id ? 'bg-brand-600 text-white rounded-br-md' : 'bg-ink-100 text-ink-800 rounded-bl-md'">
+                            <div x-text="m.message_text"></div>
+                            <div class="text-[10px] mt-1 opacity-70" x-text="new Date(m.sent_at).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </template>
+                    <p x-show="!messages.length" class="text-center text-ink-400 py-8 text-sm">Сообщений пока нет</p>
+                  </div>
+                  <div class="border-t border-ink-200 p-3 flex gap-2 bg-ink-50">
+                    <input x-model="newMessage" placeholder="Сообщение..." class="flex-1 px-4 py-2 border border-ink-200 rounded-full text-sm bg-white" @keydown.enter.prevent="sendMessage()">
+                    <button @click="sendMessage()" class="bg-brand-600 hover:bg-brand-700 text-white text-sm px-5 rounded-full font-medium">Отправить</button>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </section>
